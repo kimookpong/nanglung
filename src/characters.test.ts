@@ -1,0 +1,141 @@
+import { describe, expect, it } from "vitest";
+import {
+  CHARACTERS,
+  CHARACTER_IDS,
+  REST_RIG,
+  armKinematics,
+  characterScene,
+  characterSvg,
+  type SceneNode,
+} from "./characters";
+import { defaultSettings, parseSettings } from "./core";
+import { demoPerformance } from "./performance";
+
+const flatten = (nodes: SceneNode[]): SceneNode[] =>
+  nodes.flatMap((n) => [n, ...flatten(n.children ?? [])]);
+describe("five-character library", () => {
+  it("preserves the reference colors and attaches Theng's ornaments to the moving pieces", () => {
+    const theng = CHARACTERS.find(c => c.id === "theng")!;
+    const scene = flatten(characterScene(theng, { mouth: 1, head: 0.55, leftArm: 1, rightArm: 1 }));
+    expect(scene.find(n => n.name === "right-arm-hand")!.children!.some(n => n.name === "red-fingertip")).toBe(true);
+    expect(scene.find(n => n.name === "lower-jaw")!.children!.some(n => n.name === "lower-red-lip")).toBe(true);
+    expect(scene.find(n => n.name === "head")!.children!.some(n => n.name === "blue-collar")).toBe(true);
+    const svg = characterSvg(theng);
+    for (const color of ["#34479b", "#349ccc", "#df363b"]) expect(svg).toContain(`fill="${color}"`);
+    expect(svg).toContain('stroke="#fffdf6"');
+    expect(svg).toContain('fill="none"');
+  });
+  it("attaches optional accessories to the correct body part and can hide them without altering the rig", () => {
+    for (const character of CHARACTERS) {
+      const shown = flatten(characterScene(character, REST_RIG, true));
+      const hidden = flatten(characterScene(character, REST_RIG, false));
+      const props = shown.filter((n) => n.name.endsWith("-accessory"));
+      expect(props.length).toBe(character.accessory ? 1 : 0);
+      expect(hidden.some((n) => n.name.endsWith("-accessory"))).toBe(false);
+      expect(shown.find((n) => n.name === "right-arm")?.x).toBe(
+        hidden.find((n) => n.name === "right-arm")?.x,
+      );
+      if (character.accessory)
+        expect(props[0].name).toBe(
+          `${character.accessory.attachment}-accessory`,
+        );
+    }
+    expect(parseSettings({ accessories: false }).accessories).toBe(false);
+    expect(parseSettings({}).accessories).toBe(true);
+  });
+  it("keeps five distinct silhouettes and stable identities", () => {
+    expect(CHARACTERS.map((c) => c.id)).toEqual([...CHARACTER_IDS]);
+    expect(new Set(CHARACTERS.map((c) => c.body.path)).size).toBe(5);
+    expect(new Set(CHARACTERS.map((c) => c.head.graphic.path)).size).toBe(5);
+    expect(CHARACTERS.find((c) => c.id === "theng")!.arms.left.hand).toBe(
+      "ring",
+    );
+    expect(CHARACTERS.find((c) => c.id === "theng")!.arms.right.hand).toBe(
+      "point",
+    );
+  });
+  for (const character of CHARACTERS) {
+    it(`${character.id}: keeps jaw, elbow and wrist pivots in the correct hierarchy`, () => {
+      const scene = characterScene(character, {
+        ...REST_RIG,
+        mouth: 1,
+        head: 0.55,
+        rightArm: 1,
+        leftArm: 1,
+      });
+      const nodes = flatten(scene),
+        head = nodes.find((n) => n.name === "head")!;
+      expect(head.children!.some((n) => n.name === "lower-jaw")).toBe(true);
+      expect(head.rotation).toBeCloseTo(character.head.headLimit);
+      expect(
+        head.children!.find((n) => n.name === "lower-jaw")!.rotation,
+      ).toBeCloseTo(character.head.jawLimit);
+      for (const side of ["right", "left"] as const) {
+        const arm = character.arms[side];
+        for (const value of [0, 0.5, 1]) {
+          const k = armKinematics(arm, value);
+          expect(
+            Math.hypot(
+              k.elbow[0] - arm.shoulder[0],
+              k.elbow[1] - arm.shoulder[1],
+            ),
+          ).toBeCloseTo(arm.upper);
+          expect(
+            Math.hypot(k.wrist[0] - k.elbow[0], k.wrist[1] - k.elbow[1]),
+          ).toBeCloseTo(arm.lower);
+          expect(k.wrist.every(Number.isFinite)).toBe(true);
+        }
+        const wrapper = scene.find((n) => n.name === `${side}-arm`)!;
+        const upper = wrapper.children!.find(
+          (n) => n.name === `${side}-arm-upper`,
+        )!;
+        const lower = upper.children!.find(
+          (n) => n.name === `${side}-arm-forearm`,
+        )!;
+        expect(lower.x).toBe(arm.upper);
+        expect(
+          lower.children!.find((n) => n.name === `${side}-arm-hand`)!.x,
+        ).toBe(arm.lower);
+      }
+    });
+    it(`${character.id}: exports self-contained SVG with unique clip references`, () => {
+      const svg = characterSvg(character);
+      expect(svg).not.toMatch(
+        /NaN|undefined|https?:\/\/(?!www.w3.org)|<script/,
+      );
+      const ids = [...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const [, ref] of svg.matchAll(/url\(#([^\)]+)\)/g))
+        expect(ids).toContain(ref);
+      expect(svg).toContain(character.name);
+    });
+    it(`${character.id}: demo values stay in safe control ranges`, () => {
+      for (let time = 0; time < 30; time += 0.1) {
+        const p = demoPerformance(character.id, time);
+        for (const v of Object.values(p.values)) {
+          expect(v).toBeGreaterThanOrEqual(0);
+          expect(v).toBeLessThanOrEqual(1);
+        }
+        expect(p.x).toBeGreaterThan(0.1);
+        expect(p.x).toBeLessThan(0.9);
+      }
+    });
+  }
+  it("migrates old profiles and persists the selected character without losing calibration or assignments", () => {
+    const { characters: _characters, handMode: _handMode, ...old } = defaultSettings();
+    old.profiles.Left.calibrated = true;
+    old.hand = "Left";
+    old.assignments.reverse();
+    const restored = parseSettings({ ...old, character: "nunui" });
+    expect(restored.character).toBe("nunui");
+    expect(restored.profiles.Left.calibrated).toBe(true);
+    expect(restored.assignments).toEqual(old.assignments);
+    expect(restored.hand).toBe("Left");
+    expect(parseSettings({ ...old, character: "missing" }).character).toBe(
+      "theng",
+    );
+    expect(parseSettings({ ...old, character: undefined }).character).toBe(
+      "theng",
+    );
+  });
+});

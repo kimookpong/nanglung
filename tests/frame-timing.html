@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><title>NangLung — Frame timing diagnostic</title></head><body><h1>Frame timing diagnostic</h1><p>Compares the browser's empty requestAnimationFrame loop with the actual puppet renderer. This is a preview diagnostic, not a hardware certification.</p><pre id="result">Measuring browser baseline…</pre><canvas id="stage" style="max-width:800px;width:100%"></canvas><script type="module">
+import { StageRenderer } from '/src/renderer.ts';
+import { defaultSettings, restPose } from '/src/core.ts';
+const renderer = new StageRenderer(document.getElementById('stage'));
+const settings = defaultSettings();
+const pose = restPose();
+function measure(draw) {
+  return new Promise(resolve => {
+    let start = 0, frames = 0, cost = 0;
+    function frame(time) {
+      if (!start) start = time;
+      const before = performance.now();
+      if (draw) { pose.rightArm = .5 + Math.sin(time / 500) * .4; renderer.draw(pose, settings); }
+      cost += performance.now() - before; frames++;
+      if (time - start < 3500) requestAnimationFrame(frame);
+      else resolve({ fps: +(frames * 1000 / (time - start)).toFixed(1), meanDrawMs: +(cost / frames).toFixed(2) });
+    }
+    requestAnimationFrame(frame);
+  });
+}
+const baseline = await measure(false);
+document.getElementById('result').textContent = 'Measuring actual renderer…';
+const rendered = await measure(true);
+document.getElementById('result').textContent = JSON.stringify({ baseline, rendered }, null, 2);
+</script></body></html>

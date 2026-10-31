@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+coverage/
+public/hand-worker.js
+public/vision/vision_wasm*
+.env
+.env.*
+!.env.example

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>NangLung — Vision integration test</title></head>
+<body><h1>Vision integration test</h1><p>Runs the production classic worker, local WASM and local model on the official MediaPipe sample. No camera access.</p><pre id="result">Initializing…</pre>
+<script type="module">
+import { extractSignal, defaultSettings } from '/src/core.ts';
+const output = document.getElementById('result');
+const worker = new Worker('/hand-worker.js');
+let sent = 0;
+const timings = [];
+const { HandEnsemble } = await import('/src/ensemble.ts');
+const ensemble = new HandEnsemble();
+const settings = defaultSettings();
+settings.handMode = "dual";
+ensemble.reset(settings);
+let image;
+let backend;
+const timer = setTimeout(() => { output.textContent = 'FAIL: worker timed out'; worker.terminate(); }, 45000);
+worker.onerror = event => { output.textContent = 'FAIL: ' + event.message; clearTimeout(timer); };
+async function sendFrame() {
+  const bitmap = await createImageBitmap(image);
+  const timestamp = performance.now();
+  worker.postMessage({ type: 'frame', bitmap, timestamp }, [bitmap]);
+}
+worker.onmessage = async ({data}) => {
+  try {
+    if (data.type === 'error') throw new Error(data.message);
+    if (data.type === 'ready') {
+      backend = data.backend;
+      output.textContent = 'Worker initialized. Loading sample…';
+      image = await createImageBitmap(await (await fetch('/tests/fixtures/hand.jpg')).blob());
+      await sendFrame();
+    } else if (data.type === 'result') {
+      if (!data.hands.length) throw new Error('No hands detected in the sample');
+      for (const hand of data.hands) {
+        if (hand.image.length !== 21 || hand.world.length !== 21) throw new Error('Incomplete landmarks');
+        const signal = extractSignal(hand.image, hand.world, image.width / image.height);
+        if (!signal || !signal.fingers.every(Number.isFinite)) throw new Error('Invalid finger signal');
+
+      }
+      if (!data.hands.some(h => h.side === "Left") || !data.hands.some(h => h.side === "Right")) throw new Error('Sample must contain both hands');
+      ensemble.accept(data, performance.now(), settings, image.width / image.height);
+      for (const side of ['Left', 'Right']) {
+        ensemble.sessions[side].controller.tick(performance.now(), 0.033, settings.smoothing);
+        if (ensemble.sessions[side].controller.state !== 'tracking') throw new Error('Actor is not tracking: ' + side);
+      }
+      timings.push(data.inference); sent++;
+      if (sent < 6) { output.textContent = `Processing frame ${sent}/6…`; await sendFrame(); }
+      else {
+        clearTimeout(timer); worker.terminate(); image.close();
+        output.textContent = JSON.stringify({ status: 'PASS', frames: sent, backend, hands: data.hands.map(h => ({side:h.side, landmarks:h.image.length})), meanInferenceMs: Math.round(timings.reduce((a,b)=>a+b,0)/timings.length), warmInferenceMs: Math.round(timings.slice(1).reduce((a,b)=>a+b,0)/(timings.length-1)), localAssets: true, actors: Object.fromEntries(["Left", "Right"].map(side => [side, {character: settings.characters[side], state: ensemble.sessions[side].controller.state, fingers: ensemble.sessions[side].controller.fingers.length}])) }, null, 2);
+      }
+    }
+  } catch (error) { clearTimeout(timer); worker.terminate(); output.textContent = 'FAIL: ' + error.message; }
+};
+worker.postMessage({ type: 'init', base: new URL('/', location.href).href });
+</script></body></html>

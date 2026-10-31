@@ -1,0 +1,16 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><title>Calibration dialog layout fixture</title></head><body><div id="app"></div><script type="module">
+import '/src/style.css';
+import {renderStudio} from '/src/ui.ts';
+import {defaultSettings} from '/src/core.ts';
+// A layout-only fixture: no camera permissions, model, or simulated tracking success.
+document.getElementById('app').innerHTML=renderStudio(defaultSettings());
+document.getElementById('step-number').textContent='ท่าที่ 4 / 4';
+document.getElementById('step-title').textContent='เลื่อนมือไปมุมขวาล่าง';
+document.getElementById('step-copy').textContent='วางฝ่ามือที่มุมขวาล่างของพื้นที่เชิด เวทีจะปรับให้เข้ากับระยะขยับมือของคุณ';
+document.getElementById('calibration-live').textContent='ยังไม่เห็นมือขวา กรุณาวางมือให้เห็นในกล้อง';
+document.getElementById('calibration-error').textContent='ช่วงการขยับของนิ้วนางแคบเกินไป กรุณาปรับเทียบใหม่ให้เห็นนิ้วชัด';
+document.getElementById('step-dots').innerHTML='<span class="active"></span>'.repeat(4);
+document.getElementById('capture').textContent='เก็บค่าและบันทึก';
+document.getElementById('calibration-dialog').showModal();
+document.getElementById('close-calibration').onclick=()=>document.getElementById('calibration-dialog').close();
+</script></body></html>
