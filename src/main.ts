@@ -12,7 +12,7 @@ import {
 } from "./core";
 import { CameraTracker } from "./camera";
 import { StageRenderer, drawLandmarks, drawHands } from "./renderer";
-import { getCharacter, isCharacterId } from "./characters";
+import { getCharacter, isCharacterId, MAIN_CAST_IDS } from "./characters";
 import { demoPerformance } from "./performance";
 import { HandEnsemble, activeHands, handSettings, HAND_SIDES } from "./ensemble";
 
@@ -180,6 +180,8 @@ function updateCharacter() {
   const download = el<HTMLAnchorElement>("character-download");
   download.href = `${import.meta.env.BASE_URL}characters/${character.id}.svg`;
   download.download = `nanglung-${character.id}.svg`;
+  el<HTMLSelectElement>("character-more").value = MAIN_CAST_IDS.includes(character.id) ? "" : character.id;
+  el("character-more-label").classList.toggle("active", !MAIN_CAST_IDS.includes(character.id));
   document
     .querySelectorAll<HTMLButtonElement>("[data-character]")
     .forEach((button) => {
@@ -188,21 +190,22 @@ function updateCharacter() {
       button.setAttribute("aria-pressed", String(active));
     });
 }
-document
-  .querySelectorAll<HTMLButtonElement>("[data-character]")
-  .forEach((button) =>
-    button.addEventListener("click", () => {
-      const id = button.dataset.character;
-      if (!isCharacterId(id) || id === settings.character) return;
-      settings.character = id;
-      settings.characters[settings.hand] = id;
-      autoplayStarted = performance.now();
-      // Keep pose, calibration and assignments; a held pinky must release before flipping the new character.
-      active.controller.gesture.reset();
-      save();
-      updateLabels();
-    }),
-  );
+function chooseCharacter(id: string | undefined) {
+  if (!isCharacterId(id) || id === settings.character) return;
+  settings.character = id;
+  settings.characters[settings.hand] = id;
+  autoplayStarted = performance.now();
+  // A held pinky must release before flipping the replacement puppet.
+  active.controller.gesture.reset();
+  save();
+  updateLabels();
+}
+document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(button =>
+  button.addEventListener("click", () => chooseCharacter(button.dataset.character)),
+);
+el<HTMLSelectElement>("character-more").addEventListener("change", event =>
+  chooseCharacter((event.target as HTMLSelectElement).value),
+);
 el("character-about").addEventListener("click", () =>
   characterDialog.showModal(),
 );

@@ -399,7 +399,7 @@ select {
 }
 .character-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
@@ -1871,3 +1871,10 @@ kbd {
   .character-choice img { width: 9px; height: 16px; }
   .character-choice strong { font-size: 6px; }
 }
+
+/* Five main characters and the preserved classical library fit two rows. */
+.character-more { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 4px; border: 1px solid #e6decf; border-radius: 5px; background: #f8f3e6; text-align: center; }
+.character-more > span { font-size: 9px; color: #8b704e; }
+.character-more select { width: 100%; min-width: 0; height: 24px; padding: 0 2px; font-size: 9px; color: #614b33; border: 1px solid #ded1bb; border-radius: 3px; background: #fffaf0; }
+.character-more.active { border-color: #a67c4b; box-shadow: inset 0 0 0 1px #a67c4b; background: #ede1c7; }
+@media (max-height:620px), (max-width:600px) { .character-more { gap: 0; padding: 0 1px; } .character-more > span { display: none; } .character-more select { height: 100%; max-height: 26px; font-size: 8px; border: 0; background: transparent; } }

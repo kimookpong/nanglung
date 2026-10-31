@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHARACTERS,
   CHARACTER_IDS,
+  MAIN_CAST_IDS,
   REST_RIG,
   armKinematics,
   characterScene,
@@ -14,12 +15,12 @@ import { demoPerformance } from "./performance";
 const flatten = (nodes: SceneNode[]): SceneNode[] =>
   nodes.flatMap((n) => [n, ...flatten(n.children ?? [])]);
 describe("character library", () => {
-  it("adds Thaksin as the third choice with a red patterned sash and articulated reference pins", () => {
+  it("keeps Maew as the third choice with carved clothing and articulated reference pins", () => {
     const thaksin = CHARACTERS[2];
     expect(thaksin.id).toBe("thaksin");
     expect(thaksin.fullName).toContain("ทักษิณ ชินวัตร");
     const svg = characterSvg(thaksin);
-    for (const color of ["#17120e", "#f0bb7d", "#df2419", "#d6ac54"]) expect(svg).toContain(`fill="${color}"`);
+    for (const color of ["#111518", "#f0bb7d", "#df2419"]) expect(svg).toContain(`fill="${color}"`);
     const scene = flatten(characterScene(thaksin, {mouth:1,head:.55,rightArm:1,leftArm:1}));
     expect(scene.find(n=>n.name==="right-arm-hand")!.children!.some(n=>n.name==="wrist-pin")).toBe(true);
     expect(scene.find(n=>n.name==="right-arm-forearm")!.children!.some(n=>n.name==="elbow-pin")).toBe(true);
@@ -41,7 +42,21 @@ describe("character library", () => {
     expect(restored.characters.Left).toBe("nunui");
     expect(restored.profiles.Left.calibrated).toBe(true);
     const svg = characterSvg(prayut);
-    for (const color of ["#263954", "#6daec7", "#d3a377", "#d5ad5b"]) expect(svg).toContain(`fill="${color}"`);
+    for (const color of ["#111518", "#bd3028", "#d3a377", "#d5ad5b"]) expect(svg).toContain(`fill="${color}"`);
+  });
+  it("keeps the named main cast first, true garment cutouts and independent saved choices", () => {
+    expect(CHARACTERS.slice(0,5).map(c => c.id)).toEqual(MAIN_CAST_IDS);
+    expect(CHARACTERS.slice(0,5).map(c => c.name)).toEqual(["เท่ง", "ไอยุทธ์", "แม้ว", "วิตร", "หนู"]);
+    for (const c of CHARACTERS.slice(1,5)) {
+      expect(c.body.holes!.length).toBeGreaterThan(100);
+      expect(c.arms.right.art?.upper.holes!.length).toBeGreaterThan(100);
+      const previous = defaultSettings();
+      previous.profiles.Left.calibrated = true;
+      const restored = parseSettings({...previous, hand:"Right", character:c.id, characters:{Right:c.id,Left:"nunui"}});
+      expect(restored.characters).toEqual({Right:c.id,Left:"nunui"});
+      expect(restored.profiles.Left.calibrated).toBe(true);
+    }
+    expect(CHARACTERS.find(c => c.id === "anutin")!.name).not.toBe(CHARACTERS.find(c => c.id === "nunui")!.name);
   });
   it("preserves the reference colors and attaches Theng's ornaments to the moving pieces", () => {
     const theng = CHARACTERS.find(c => c.id === "theng")!;

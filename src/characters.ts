@@ -2,17 +2,22 @@ import type { Pose } from "./core";
 import { THENG_ART } from "./theng-reference";
 import { PRAYUT_ART } from "./prayut-art";
 import { THAKSIN_ART } from "./thaksin-art";
+import { PRAWIT_ART, ANUTIN_ART } from "./contemporary-art";
+import { leatherCostume } from "./leather-style";
 
 export const CHARACTER_IDS = [
   "theng",
   "prayut",
   "thaksin",
+  "prawit",
+  "anutin",
   "nunui",
   "sikaew",
   "yodthong",
   "khwanmuang",
 ] as const;
 export type CharacterId = (typeof CHARACTER_IDS)[number];
+export const MAIN_CAST_IDS: readonly CharacterId[] = ["theng", "prayut", "thaksin", "prawit", "anutin"];
 export type XY = readonly [number, number];
 export interface Graphic {
   path: string;
@@ -150,7 +155,7 @@ function styleArms(
 }
 
 // Shared vector rig. Theng follows the reference supplied by the user;
-// Prayut and Thaksin are contemporary caricatures; the other four retain the research-based drawings.
+// Four contemporary caricatures share a carved-leather costume language.
 export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "theng",
@@ -164,27 +169,51 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   },
   {
     id: "prayut",
-    name: "ประยุทธ์",
-    fullName: "ประยุทธ์ จันทร์โอชา · ตัวละครล้อเลียน",
+    name: "ไอยุทธ์",
+    fullName: "ไอยุทธ์ · ประยุทธ์ จันทร์โอชา · ตัวละครล้อเลียน",
     numeral: "๐๒",
-    subtitle: "ภาพล้อเลียน · สูทคราม · มือประกอบคำ",
-    traits: "ตัวละครล้อเลียนประยุทธ์ จันทร์โอชา ผมสั้นแสกข้าง คิ้วเข้ม แก้มและคางเด่น ชุดสูทคราม เนกไทฟ้า และลายฉลุขอบทองที่ออกแบบขึ้น",
+    subtitle: "คิ้วเข้ม · มือชี้ · ลายเถาใบ",
+    traits: "ไอยุทธ์ ตัวละครล้อเลียนประยุทธ์ จันทร์โอชา ผมสั้นแสกข้าง คิ้วเข้ม แก้มและคางเด่น ชุดหนังดำฉลุลายเถาใบ เนกไทแดง ขอบทอง และหมุดข้อต่อ",
     gesture: "ยกฝ่ามืออธิบาย สลับชี้ประกอบคำ แล้วพักฟังเท่ง",
     source: "https://parliamentwatch.wevis.info/politicians/62d24a30-9b4d-49f1-826c-0e2168ad798d",
     sourceLabel: "ภาพบุคคลอ้างอิง · WeVis ↗",
-    ...PRAYUT_ART,
+    ...leatherCostume(PRAYUT_ART),
   },
   {
     id: "thaksin",
-    name: "ทักษิณ",
-    fullName: "ทักษิณ ชินวัตร · ตัวละครล้อเลียน",
+    name: "แม้ว",
+    fullName: "แม้ว · ทักษิณ ชินวัตร · ตัวละครล้อเลียน",
     numeral: "๐๓",
-    subtitle: "ภาพล้อเลียน · ยิ้ม · ผ้าคาดเอวแดงทอง",
-    traits: "ตามภาพอ้างอิงผู้ใช้: ผมแสกข้าง ยิ้มตาหยี สูทดำ เนกไทแดง เข็มธงไทย และผ้าคาดเอวแดงลายทอง พร้อมหมุดข้อต่อแบบตัวหนัง",
+    subtitle: "ยิ้มตาหยี · ผายมือ · ลายเถาใบ",
+    traits: "แม้ว ตัวละครล้อเลียนทักษิณ ชินวัตร ผมแสกปัด ยิ้มตาหยี สูทหนังดำฉลุลายเถาใบ เนกไทแดง เข็มธงไทย และหมุดข้อต่อ ปรับจากภาพอ้างอิงผู้ใช้ให้เข้าชุดหลัก",
     gesture: "ยกฝ่ามือรับบทสนทนา ยิ้มตอบ และผายมือประกอบคำ",
     source: "https://github.com/kimookpong/nanglung/blob/main/docs/THAKSIN_CHARACTER.md",
     sourceLabel: "รายละเอียดแบบจากภาพผู้ใช้ ↗",
-    ...THAKSIN_ART,
+    ...leatherCostume({...THAKSIN_ART, decorations: THAKSIN_ART.decorations?.filter(n => !/^(sash|belt|tail|knot)/.test(n.name))}),
+  },
+  {
+    id: "prawit",
+    name: "วิตร",
+    fullName: "วิตร · ประวิตร วงษ์สุวรรณ · ตัวละครล้อเลียน",
+    numeral: "๐๔",
+    subtitle: "ทรงป้อม · แก้มเต็ม · เนกไททอง",
+    traits: "วิตร ตัวละครล้อเลียนประวิตร วงษ์สุวรรณ สัดส่วนเตี้ยป้อม ศีรษะกลม แก้มเต็ม ตาหรี่ ผมสั้นเปิดหน้าผาก สูทหนังดำฉลุลายเถาใบและเนกไททอง",
+    gesture: "ยกฝ่ามือใกล้ลำตัว เว้นช่วงฟัง แล้วพยักหน้ารับบทสนทนา",
+    source: "https://parliamentwatch.wevis.info/politicians/d5409bcf-f304-423e-9079-a593b9ef5dbd",
+    sourceLabel: "ภาพบุคคลอ้างอิง · WeVis ↗",
+    ...PRAWIT_ART,
+  },
+  {
+    id: "anutin",
+    name: "หนู",
+    fullName: "หนู · อนุทิน ชาญวีรกูล · ตัวละครล้อเลียน",
+    numeral: "๐๕",
+    subtitle: "ไหล่กว้าง · กรามชัด · เนกไทคราม",
+    traits: "หนู ตัวละครล้อเลียนอนุทิน ชาญวีรกูล ไหล่กว้าง ผมสั้น คิ้วหนา กรามชัด ยิ้มเล็กน้อย ชุดหนังดำฉลุลายเถาใบและเนกไทคราม ต่างจากตัวหนูนุ้ยในคลังดั้งเดิม",
+    gesture: "ผายมือกว้างสลับรับคำ อีกมือพักข้างลำตัว",
+    source: "https://parliamentwatch.wevis.info/politicians/4cc8dfaf-e5ce-41f4-94d3-53bf858308b4",
+    sourceLabel: "ภาพบุคคลอ้างอิง · WeVis ↗",
+    ...ANUTIN_ART,
   },
   {
     id: "nunui",
