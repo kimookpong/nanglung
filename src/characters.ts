@@ -1,10 +1,12 @@
 import type { Pose } from "./core";
 import { THENG_ART } from "./theng-reference";
 import { PRAYUT_ART } from "./prayut-art";
+import { THAKSIN_ART } from "./thaksin-art";
 
 export const CHARACTER_IDS = [
   "theng",
   "prayut",
+  "thaksin",
   "nunui",
   "sikaew",
   "yodthong",
@@ -42,6 +44,8 @@ interface ArmDefinition {
     lower: Graphic;
     hand: Graphic;
     handDetails?: SceneNode[];
+    upperDetails?: SceneNode[];
+    lowerDetails?: SceneNode[];
   };
 }
 export interface CharacterDefinition {
@@ -146,7 +150,7 @@ function styleArms(
 }
 
 // Shared vector rig. Theng follows the reference supplied by the user;
-// Prayut is a contemporary caricature; the other four retain the research-based drawings.
+// Prayut and Thaksin are contemporary caricatures; the other four retain the research-based drawings.
 export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "theng",
@@ -171,9 +175,21 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
     ...PRAYUT_ART,
   },
   {
+    id: "thaksin",
+    name: "ทักษิณ",
+    fullName: "ทักษิณ ชินวัตร · ตัวละครล้อเลียน",
+    numeral: "๐๓",
+    subtitle: "ภาพล้อเลียน · ยิ้ม · ผ้าคาดเอวแดงทอง",
+    traits: "ตามภาพอ้างอิงผู้ใช้: ผมแสกข้าง ยิ้มตาหยี สูทดำ เนกไทแดง เข็มธงไทย และผ้าคาดเอวแดงลายทอง พร้อมหมุดข้อต่อแบบตัวหนัง",
+    gesture: "ยกฝ่ามือรับบทสนทนา ยิ้มตอบ และผายมือประกอบคำ",
+    source: "https://github.com/kimookpong/nanglung/blob/main/docs/THAKSIN_CHARACTER.md",
+    sourceLabel: "รายละเอียดแบบจากภาพผู้ใช้ ↗",
+    ...THAKSIN_ART,
+  },
+  {
     id: "nunui",
     name: "หนูนุ้ย",
-    numeral: "๐๓",
+    numeral: "๐๔",
     subtitle: "คอตก · พุงยื่น · ฟังก่อนตอบ",
     traits: "รูปเตี้ย จมูกและปากยื่น เคราใต้คาง คอโน้ม และผ้านุ่งเรียบ",
     gesture: "ฟัง ก้มรับเล็กน้อย แล้วค่อยตอบ",
@@ -228,7 +244,7 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "sikaew",
     name: "สีแก้ว",
-    numeral: "๐๔",
+    numeral: "๐๕",
     subtitle: "ศีรษะล้าน · หนักแน่น · พูดจริงทำจริง",
     traits: "อ้วนเตี้ย บ่าแน่น มีโหนกคอ ศีรษะล้าน และผ้าโจงกระเบนลายตาราง",
     gesture: "ยกมือห้าม ค้างท่า แล้วกล่าวตอบอย่างหนักแน่น",
@@ -269,7 +285,7 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "yodthong",
     name: "ยอดทอง",
-    numeral: "๐๕",
+    numeral: "๐๖",
     subtitle: "ผมหยิก · ชอบโอ้อวด · เปลี่ยนท่าไว",
     traits:
       "ผมหยิกเป็นมวล คางและปากเด่น ท้องยื่น ก้นงอน และผ้าโจงกระเบนลายข้าวหลามตัด",
@@ -336,7 +352,7 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "khwanmuang",
     name: "ขวัญเมือง",
-    numeral: "๐๖",
+    numeral: "๐๗",
     subtitle: "จมูกยาว · สุขุม · ผู้นำเข้าสู่เรื่อง",
     traits: "หน้าผากสูง จมูกยาว ปากกว้าง พุงโย้ และผ้านุ่งเรียบ",
     gesture: "ยกมือกล่าวนำ เว้นจังหวะ แล้วหันเชิญเข้าสู่เรื่อง",
@@ -463,6 +479,7 @@ function armNodes(arm: ArmDefinition, value: number, name: string): SceneNode {
             graphic: arm.art?.lower ?? limb(arm.lower),
             children: [
               { name: `${name}-hand`, x: arm.lower, graphic: arm.art?.hand ?? hands[arm.hand], children: arm.art?.handDetails },
+              ...(arm.art?.lowerDetails ?? []),
               ...(arm.art ? [] : [{
                 name: `${name}-wrist-pin`,
                 graphic: {
@@ -472,6 +489,7 @@ function armNodes(arm: ArmDefinition, value: number, name: string): SceneNode {
               }]),
             ],
           },
+          ...(arm.art?.upperDetails ?? []),
           ...(arm.art ? [] : [{
             name: `${name}-elbow-pin`,
             graphic: {

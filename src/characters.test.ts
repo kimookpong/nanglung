@@ -14,6 +14,21 @@ import { demoPerformance } from "./performance";
 const flatten = (nodes: SceneNode[]): SceneNode[] =>
   nodes.flatMap((n) => [n, ...flatten(n.children ?? [])]);
 describe("character library", () => {
+  it("adds Thaksin as the third choice with a red patterned sash and articulated reference pins", () => {
+    const thaksin = CHARACTERS[2];
+    expect(thaksin.id).toBe("thaksin");
+    expect(thaksin.fullName).toContain("ทักษิณ ชินวัตร");
+    const svg = characterSvg(thaksin);
+    for (const color of ["#17120e", "#f0bb7d", "#df2419", "#d6ac54"]) expect(svg).toContain(`fill="${color}"`);
+    const scene = flatten(characterScene(thaksin, {mouth:1,head:.55,rightArm:1,leftArm:1}));
+    expect(scene.find(n=>n.name==="right-arm-hand")!.children!.some(n=>n.name==="wrist-pin")).toBe(true);
+    expect(scene.find(n=>n.name==="right-arm-forearm")!.children!.some(n=>n.name==="elbow-pin")).toBe(true);
+    expect(scene.find(n=>n.name==="lower-jaw")!.children!.some(n=>n.name==="lower-red-lip")).toBe(true);
+    const previous = defaultSettings();
+    const restored = parseSettings({...previous, character:"thaksin", characters:{...previous.characters,Right:"thaksin"}});
+    expect(restored.character).toBe("thaksin");
+    expect(restored.characters.Left).toBe(previous.characters.Left);
+  });
   it("adds Prayut as the second choice and companion without overwriting saved actors", () => {
     const prayut = CHARACTERS[1];
     expect(prayut.id).toBe("prayut");

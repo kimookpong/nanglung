@@ -399,7 +399,7 @@ select {
 }
 .character-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
@@ -1814,7 +1814,7 @@ kbd {
   }
 }
 
-/* Six characters fit the original screen-height budget. */
+/* Character choices retain two rows within the screen-height budget. */
 @media (max-height: 620px), (max-width: 600px) {
   .character-choice {
     display: flex;
@@ -1856,4 +1856,18 @@ kbd {
   .character-choice strong {
     font-size: 6.5px;
   }
+}
+
+@media (max-height: 620px) and (min-width: 601px) {
+  .character-choice { gap: 1px; padding: 1px; }
+  .character-choice img { width: 14px; height: 25px; }
+}
+@media (max-width: 600px) and (orientation: portrait) {
+  .character-choice { flex-direction: column; gap: 0; padding: 0; }
+  .character-choice img { width: 100%; height: 14px; }
+  .character-choice strong { font-size: 7px; line-height: 1.25; max-width: 100%; }
+}
+@media (max-width: 600px) and (orientation: landscape) {
+  .character-choice img { width: 9px; height: 16px; }
+  .character-choice strong { font-size: 6px; }
 }

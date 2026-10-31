@@ -32,6 +32,13 @@ export function demoPerformance(id: CharacterId, t: number): DemoPerformance {
     v.leftArm = speaking ? 0.2 + 0.22 * wave(t + 1, 1.1) : 0.12;
     v.head = speaking ? 0.1 * wave(t, 2.1) : 0.16;
     result.angle = 0.018 * Math.sin(t * 1.2);
+  } else if (id === "thaksin") {
+    const phase = t % 10, speaking = phase > 2 && phase < 7.5;
+    v.mouth = speaking ? .18 + .48 * wave(t, 4.8) : .06;
+    v.rightArm = speaking ? .2 + .25 * wave(t, 1.2) : .16;
+    v.leftArm = speaking ? .18 + .28 * wave(t + 1, 1.1) : .12;
+    v.head = .08 + .11 * wave(t, 1.7);
+    result.angle = .025 * Math.sin(t * .9);
   } else if (id === "nunui") {
     const phase = t % 9,
       speaking = phase > 3 && phase < 7;
