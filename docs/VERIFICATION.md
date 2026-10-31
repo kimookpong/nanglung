@@ -59,11 +59,20 @@
 - เพิ่มกรณีทดสอบสีและส่วนตกแต่งที่ติดมือ/กราม ทดสอบล่าสุด 52 กรณีผ่าน และ build ที่ `/nanglung/` ผ่านสำหรับชื่อ repository ที่ผู้ใช้เลือก
 
 - เพิ่ม `.github/workflows/pages.yml`: ติดตั้งจาก lockfile รัน tests อ่าน base path จาก Pages แล้ว build/upload/deploy โดยแยกสิทธิ์ build และ deploy
-- ตรวจ commit SHA ของ actions ทั้งห้ากับ GitHub แล้ว และ parse YAML ผ่าน ยังไม่ได้รัน workflow บน GitHub เพราะยังไม่ได้เลือกหรือสร้าง repository
+- ตรวจ commit SHA ของ actions ทั้งห้ากับ GitHub แล้ว และ parse YAML ผ่าน ต่อมาผู้ใช้เลือก repository `kimookpong/nanglung` และรัน workflow บน GitHub สำเร็จ
 - `npm test` ผ่าน 51 กรณี และ `npm run build -- --base /NangLung/` ผ่าน
 - ให้บริการ production build ใต้ `/NangLung/` ผ่าน HTTP แบบ static จริง: หน้าสตูดิโอและ SVG ทั้งห้าโหลดได้ เลือกสองมือและเล่นตัวอย่างได้ ไม่พบ console error/warning ในรอบตรวจ
 - ใช้ classic worker จาก `/NangLung/hand-worker.js` ให้โหลด WASM/โมเดลภายใน `/NangLung/vision/` แล้วตรวจภาพตัวอย่างจริง: พบ Left/Right ข้างละ 21 จุด
-- ผลนี้ยืนยันความพร้อมของ build ที่เส้นทางย่อย ไม่ใช่หลักฐานว่าเว็บถูกเผยแพร่บน GitHub Pages แล้ว
+- การตรวจเส้นทางย่อยข้างต้นเป็นผลก่อนเผยแพร่ ผลตรวจเว็บสาธารณะอยู่ด้านล่าง
+
+## เผยแพร่จริงบน GitHub Pages
+
+- Repository สาธารณะ: [kimookpong/nanglung](https://github.com/kimookpong/nanglung) และเว็บ [kimookpong.github.io/nanglung](https://kimookpong.github.io/nanglung/)
+- [GitHub Actions รอบแรก](https://github.com/kimookpong/nanglung/actions/runs/41208548986) ผ่านทั้ง `build` และ `deploy` จาก commit `c36f4f4` รวมขั้น Test และ Build for the Pages path
+- Pages ใช้ `build_type: workflow` และเปิดบังคับ HTTPS
+- ตรวจผ่านเบราว์เซอร์บนโดเมนจริง: หน้าสตูดิโอและ SVG ห้าตัวโหลดครบ เท่งมีรายละเอียดสีตามภาพผู้ใช้ เลือกสองมือ/เล่นตัวอย่าง เปิดข้อมูลและลิงก์ SVG ได้ ไม่พบ console error/warning ในรอบตรวจ
+- ตรวจ HTTP และ SHA-256 ของ worker, โมเดล, WASM ทั้งสองแบบ และ WASM loader ทั้งสองไฟล์บนเว็บจริง ทุกไฟล์ได้ HTTP 200 และตรงกับไฟล์ใน local build; WASM ใช้ MIME `application/wasm`
+- การทดสอบนี้ไม่ได้เปิดเว็บแคมหรือยืนยันการเชิดด้วยมือจริง ผู้ใช้ยังต้องอนุญาตกล้องบนเว็บไซต์และทดลองกับอุปกรณ์เป้าหมาย
 
 ## ผลวัดเฉพาะเบราว์เซอร์พรีวิว
 

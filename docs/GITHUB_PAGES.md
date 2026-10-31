@@ -21,7 +21,7 @@
 3. ไปที่ Actions → Deploy NangLung to GitHub Pages → Run workflow
 4. เมื่อ job `deploy` สำเร็จ เปิด URL จาก environment `github-pages`
 
-สำหรับชื่อ `kimookpong/nanglung` URL ที่คาดว่าจะได้รับคือ `https://kimookpong.github.io/nanglung/` จนกว่า repository และ deployment จะถูกสร้างและตรวจสำเร็จ URL นี้ยังไม่ถือว่าเผยแพร่แล้ว
+เผยแพร่ที่ **[https://kimookpong.github.io/nanglung/](https://kimookpong.github.io/nanglung/)** จาก repository สาธารณะ **[kimookpong/nanglung](https://github.com/kimookpong/nanglung)** แล้ว โดย workflow รอบแรกผ่านทั้ง build และ deploy ดู [ผลรันครั้งแรก](https://github.com/kimookpong/nanglung/actions/runs/41208548986)
 
 GitHub Free รองรับ Pages จาก repository สาธารณะ หากต้องการเก็บ source repository เป็น private ต้องใช้แผนที่รองรับ การนำ source repository เป็น public จะเปิดเผยไฟล์ต้นฉบับและเอกสารด้วย
 
