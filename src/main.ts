@@ -9,12 +9,14 @@ import {
   type Settings,
   type HandSide,
   type Signal,
+  restPose,
 } from "./core";
 import { CameraTracker } from "./camera";
 import { StageRenderer, drawLandmarks, drawHands } from "./renderer";
 import { getCharacter, isCharacterId, MAIN_CAST_IDS } from "./characters";
 import { demoPerformance } from "./performance";
 import { HandEnsemble, activeHands, handSettings, HAND_SIDES } from "./ensemble";
+import { addMember, initialCast, memberForHand, parseCast, placement, removeMember, selectMember, MAX_CAST, type CastState } from "./cast";
 
 import { icon, renderStudio, fingerNames, actionNames } from "./ui";
 
@@ -29,6 +31,15 @@ try {
   storageUnavailable = true;
 }
 
+let cast: CastState;
+try { cast = parseCast(JSON.parse(localStorage.getItem("nanglung.cast.v1") ?? "null"), settings); }
+catch { cast = initialCast(settings); }
+for (const side of HAND_SIDES) {
+  const member = memberForHand(cast, side);
+  if (member) settings.characters[side] = member.character;
+}
+if (!memberForHand(cast, settings.hand)) settings.hand = cast.controls.Right ? "Right" : "Left";
+settings.character = settings.characters[settings.hand];
 document.querySelector<HTMLDivElement>("#app")!.innerHTML =
   renderStudio(settings);
 
@@ -46,6 +57,10 @@ const calibrationDialog = el<HTMLDialogElement>("calibration-dialog");
 const guideDialog = el<HTMLDialogElement>("guide-dialog");
 const characterDialog = el<HTMLDialogElement>("character-dialog");
 const settingsDialog = el<HTMLDialogElement>("settings-dialog");
+const castDialog = el<HTMLDialogElement>("cast-dialog");
+let castPage = 0;
+let savedCast = JSON.stringify(cast);
+let castDirty = false;
 el("settings-button").addEventListener("click", () =>
   settingsDialog.showModal(),
 );
@@ -94,7 +109,9 @@ let autoplay = false;
 let autoplayStarted = 0;
 let overlayVisible = true;
 function initialDemo(side: HandSide) {
-  return { fingers: [0, 0.16, 0.12, 0, 0], x: settings.handMode === "dual" ? (side === "Left" ? 0.25 : 0.75) : 0.5, y: 0.5, tilt: 0 };
+  const pose = memberForHand(cast,side)?.pose ?? restPose();
+  const values = {mouth:pose.mouth,rightArm:pose.rightArm,leftArm:pose.leftArm,head:pose.head/.55,flip:0};
+  return { fingers:settings.assignments.map((a,i)=>values[a]/settings.gain[i]),x:.5+(pose.x-.5)/.8,y:.5+(pose.y-.53)/.4,tilt:pose.tilt };
 }
 let demos = { Left: initialDemo("Left"), Right: initialDemo("Right") };
 let demo = demos[settings.hand];
@@ -113,6 +130,9 @@ function notify(message: string) {
 function save() {
   try {
     localStorage.setItem("nanglung.settings.v1", JSON.stringify(settings));
+    localStorage.setItem("nanglung.cast.v1", JSON.stringify(cast));
+    savedCast = JSON.stringify(cast);
+    castDirty = false;
   } catch {
     if (!storageUnavailable)
       notify("บันทึกค่าในเบราว์เซอร์ไม่ได้ ค่าจะใช้ได้เฉพาะรอบนี้");
@@ -129,9 +149,8 @@ function updateLabels() {
   el("calibration-title").textContent = `ปรับเทียบมือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
   el("finger-description").textContent = `${mode === "demo" ? "ทดลอง" : "สัญญาณ"}มือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
   for (const side of HAND_SIDES) {
-    el<HTMLSelectElement>("hand-side").querySelector<HTMLOptionElement>(`option[value="${side}"]`)!.textContent = settings.handMode === "dual"
-      ? `${side === "Left" ? "ซ้าย" : "ขวา"} · ${getCharacter(settings.characters[side]).name}`
-      : `มือ${side === "Left" ? "ซ้าย" : "ขวา"}`;
+    el<HTMLSelectElement>("hand-side").querySelector<HTMLOptionElement>(`option[value="${side}"]`)!.textContent =
+      `${side === "Left" ? "ซ้าย" : "ขวา"} · ${memberForHand(cast,side) ? getCharacter(settings.characters[side]).name : "ยังไม่เลือก"}`;
   }
   settings.assignments.forEach((action, i) => {
     el(`action-label-${i}`).textContent = actionNames[action];
@@ -158,10 +177,14 @@ function updateLabels() {
     b.classList.toggle("active", b.dataset.theme === settings.theme);
     b.setAttribute("aria-pressed", String(b.dataset.theme === settings.theme));
   });
+  el("cast-count").textContent = String(cast.members.length);
+  if (castDialog.open) renderCast();
 }
 function updateCharacter() {
   const character = getCharacter(settings.character);
-  el("character-name").textContent = settings.handMode === "dual" ? `${settings.hand === "Left" ? "ซ้าย" : "ขวา"} · ${character.name}` : character.name;
+  const hasActor = !!memberForHand(cast,settings.hand);
+  el<HTMLButtonElement>("character-about").disabled = !hasActor;
+  el("character-name").textContent = !hasActor ? "เลือกตัวบนเวที" : `${settings.hand === "Left" ? "ซ้าย" : "ขวา"} · ${character.name}`;
   el("accessory-control").hidden = !character.accessory;
   el("accessory-label").textContent =
     `แสดง${character.accessory?.name ?? "อุปกรณ์"}`;
@@ -185,13 +208,17 @@ function updateCharacter() {
   document
     .querySelectorAll<HTMLButtonElement>("[data-character]")
     .forEach((button) => {
-      const active = button.dataset.character === character.id;
+      const active = hasActor && button.dataset.character === character.id;
       button.classList.toggle("active", active);
       button.setAttribute("aria-pressed", String(active));
     });
 }
 function chooseCharacter(id: string | undefined) {
-  if (!isCharacterId(id) || id === settings.character) return;
+  if (!isCharacterId(id)) return;
+  const member = memberForHand(cast,settings.hand);
+  if (!member) { openCast(); return; }
+  if (id === settings.character) return;
+  member.character = id;
   settings.character = id;
   settings.characters[settings.hand] = id;
   autoplayStarted = performance.now();
@@ -206,6 +233,104 @@ document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(button 
 el<HTMLSelectElement>("character-more").addEventListener("change", event =>
   chooseCharacter((event.target as HTMLSelectElement).value),
 );
+
+function bindCastHand(side: HandSide) {
+  const member=memberForHand(cast,side);
+  if(member) {
+    settings.characters[side]=member.character;
+    ensemble.sessions[side].controller.adoptPose(member.pose,performance.now());
+    ensemble.sessions[side].controller.setPaused(paused);
+  }
+  demos[side]=initialDemo(side);
+  if(member)ensemble.sessions[side].controller.fingers=demos[side].fingers.map((value,i)=>Math.min(1,value*settings.gain[i]));
+}
+function syncCastSettings() {
+  for(const side of HAND_SIDES) {
+    const member=memberForHand(cast,side);
+    if(member)settings.characters[side]=member.character;
+  }
+  if(!memberForHand(cast,settings.hand))settings.hand=cast.controls.Right?"Right":"Left";
+  settings.character=settings.characters[settings.hand];
+}
+function selectActor(id:string) {
+  const previousHand=settings.hand,previousId=cast.controls[previousHand];
+  const side=selectMember(cast,id,previousHand,settings.handMode==="dual");
+  settings.hand=side;
+  if(previousHand!==side||previousId!==id) {
+    for(const [key,hand] of heldDemoKeys)demos[hand].fingers[Number(key)-1]=0;
+    heldDemoKeys.clear();
+    if(side===previousHand||settings.handMode==="single")bindCastHand(side);
+  }
+  syncCastSettings();save();updateLabels();syncDemoControls();drawTrackingOverlay();
+}
+function openCast() {
+  const member=memberForHand(cast,settings.hand);
+  castPage=member?Math.floor(cast.members.filter(m=>m.side===member.side).indexOf(member)/2):0;
+  renderCast();castDialog.showModal();
+}
+function renderCast() {
+  const pageCount=Math.max(1,...HAND_SIDES.map(side=>Math.ceil(cast.members.filter(m=>m.side===side).length/2)));
+  castPage=Math.min(castPage,pageCount-1);
+  el("cast-total").textContent=`${cast.members.length}/${MAX_CAST}`;
+  el<HTMLSelectElement>("cast-control-hand").value=settings.hand;
+  el<HTMLButtonElement>("cast-add").disabled=cast.members.length>=MAX_CAST;
+  el("cast-roster").innerHTML=HAND_SIDES.map(side=>{
+    const group=cast.members.filter(m=>m.side===side),visible=group.slice(castPage*2,castPage*2+2);
+    return `<section class="cast-group"><h3>ฝั่ง${side==="Left"?"ซ้าย":"ขวา"} · ${group.length}</h3>${visible.map(member=>{
+      const character=getCharacter(member.character),hand=HAND_SIDES.find(h=>cast.controls[h]===member.id);
+      return `<div class="cast-member ${cast.controls[settings.hand]===member.id?"selected":""}" data-cast-member="${member.id}"><button class="cast-select" data-select-cast="${member.id}" aria-label="ควบคุม${character.name} ฝั่ง${side==="Left"?"ซ้าย":"ขวา"} ตัวที่${group.indexOf(member)+1}" aria-pressed="${cast.controls[settings.hand]===member.id}"><img src="${import.meta.env.BASE_URL}characters/${member.character}.svg" alt=""/><span><strong>${character.name}</strong><small>${hand?`มือ${hand==="Left"?"ซ้าย":"ขวา"}`:"พักบนเวที"}</small></span></button><button class="cast-small" data-move-cast="${member.id}" aria-label="ย้าย${character.name}ไปฝั่ง${side==="Left"?"ขวา":"ซ้าย"}" title="ย้ายฝั่ง">${side==="Left"?"→":"←"}</button><button class="cast-small" data-remove-cast="${member.id}" aria-label="นำ${character.name}ออกจากเวที" title="นำออกจากเวที" ${cast.members.length<=1?"disabled":""}>×</button></div>`;
+    }).join("")||'<p class="cast-empty">ไม่มีตัวละครในหน้านี้</p>'}</section>`;
+  }).join("");
+  el("cast-page").textContent=`${castPage+1} / ${pageCount}`;
+  el<HTMLButtonElement>("cast-prev").disabled=castPage===0;
+  el<HTMLButtonElement>("cast-next").disabled=castPage>=pageCount-1;
+}
+el("cast-button").addEventListener("click",openCast);
+el("close-cast").addEventListener("click",()=>castDialog.close());
+el("cast-prev").addEventListener("click",()=>{castPage--;renderCast();});
+el("cast-next").addEventListener("click",()=>{castPage++;renderCast();});
+el("cast-control-hand").addEventListener("change",()=>{
+  settings.hand=el<HTMLSelectElement>("cast-control-hand").value as HandSide;
+  active=ensemble.sessions[settings.hand];demo=demos[settings.hand];
+  updateLabels();save();syncDemoControls();
+});
+el("cast-add").addEventListener("click",()=>{
+  const character=el<HTMLSelectElement>("cast-new-character").value;
+  const side=el<HTMLSelectElement>("cast-new-side").value as HandSide;
+  if(!isCharacterId(character))return;
+  const member=addMember(cast,character,side,crypto.randomUUID());
+  if(!member){el("cast-message").textContent=`เวทีรองรับได้สูงสุด ${MAX_CAST} ตัว`;return;}
+  castPage=Math.floor((cast.members.filter(m=>m.side===side).length-1)/2);
+  selectActor(member.id);renderCast();
+  el("cast-message").textContent=`เพิ่ม${getCharacter(character).name}ฝั่ง${side==="Left"?"ซ้าย":"ขวา"}แล้ว`;
+});
+el("cast-roster").addEventListener("click",event=>{
+  const button=(event.target as HTMLElement).closest<HTMLButtonElement>("button");
+  if(!button)return;
+  const id=button.dataset.selectCast??button.dataset.removeCast??button.dataset.moveCast;
+  const member=cast.members.find(m=>m.id===id);if(!member)return;
+  if(button.dataset.selectCast){selectActor(member.id);castDialog.close();return;}
+  if(button.dataset.moveCast) {
+    member.side=member.side==="Left"?"Right":"Left";
+    member.pose.facing=member.side==="Left"?1:-1;
+    for(const side of HAND_SIDES)if(cast.controls[side]===member.id)bindCastHand(side);
+    castPage=Math.floor(cast.members.filter(m=>m.side===member.side).indexOf(member)/2);
+  } else {
+    if(!removeMember(cast,member.id))return;
+    for(const side of HAND_SIDES)bindCastHand(side);
+  }
+  syncCastSettings();save();updateLabels();syncDemoControls();renderCast();
+});
+el("stage").addEventListener("click",event=>{
+  const pointer=event as MouseEvent,id=renderer.hitTest(pointer.clientX,pointer.clientY);
+  if(id)selectActor(id);
+});
+el("stage").addEventListener("keydown",event=>{
+  if(event.key!=="ArrowLeft"&&event.key!=="ArrowRight")return;
+  event.preventDefault();
+  const index=cast.members.findIndex(m=>m.id===cast.controls[settings.hand]);
+  selectActor(cast.members[(index+(event.key==="ArrowLeft"?-1:1)+cast.members.length)%cast.members.length].id);
+});
 el("character-about").addEventListener("click", () =>
   characterDialog.showModal(),
 );
@@ -268,7 +393,10 @@ function syncDemoControls() {
   FINGERS.forEach((finger, i) => { el<HTMLInputElement>(`finger-${finger}`).value = String(demo.fingers[i] * 100); });
 }
 function resetPose() {
+  paused = false;
   ensemble.reset(settings);
+  for(const member of cast.members)member.pose={...restPose(),facing:member.side==="Left"?1:-1};
+  for(const side of HAND_SIDES)bindCastHand(side);
   heldDemoKeys.clear();
   demos = { Left: initialDemo("Left"), Right: initialDemo("Right") };
   demo = demos[settings.hand];
@@ -277,6 +405,7 @@ function resetPose() {
   el("pause").innerHTML = icon("pause");
   el("pause").setAttribute("aria-label", "พักการเชิด");
   syncDemoControls();
+  save();
 }
 function drawTrackingOverlay() {
   drawHands(overlay, overlayVisible ? activeHands(settings).flatMap(side => {
@@ -298,7 +427,9 @@ function setMode(next: "demo" | "live") {
   if (next === "demo") stopCamera();
   mode = next;
   autoplay = false;
-  resetPose();
+  ensemble.clear();
+  for(const side of HAND_SIDES)bindCastHand(side);
+  syncDemoControls();
   updateModeUI();
 }
 async function enumerateCameras() {
@@ -437,6 +568,7 @@ function finishCapture() {
       updateLabels();
       calibrationDialog.close();
       ensemble.reset(settings);
+      for(const side of HAND_SIDES)bindCastHand(side);
       setPause(wasPaused);
       notify("ปรับเทียบเรียบร้อย พร้อมเชิดด้วยมือของคุณแล้ว");
     } catch (error) {
@@ -497,7 +629,8 @@ el("reset-pose").addEventListener("click", () => {
 el("hand-mode").addEventListener("change", () => {
   settings.handMode = el<HTMLSelectElement>("hand-mode").value === "dual" ? "dual" : "single";
   autoplay = false;
-  resetPose();
+  ensemble.clear();
+  for(const side of HAND_SIDES)bindCastHand(side);
   save();
   updateLabels();
   updateModeUI();
@@ -505,13 +638,11 @@ el("hand-mode").addEventListener("change", () => {
   notify(settings.handMode === "dual" ? "สองมือพร้อมแล้ว เลือกมือซ้าย/ขวาเพื่อเปลี่ยนตัวละครและปรับเทียบแยกกัน" : "เปลี่ยนเป็นหนึ่งมือแล้ว");
 });
 el("hand-side").addEventListener("change", () => {
-  const wasPaused = paused;
   settings.hand = el<HTMLSelectElement>("hand-side").value as HandSide;
   active = ensemble.sessions[settings.hand];
   demo = demos[settings.hand];
   if (settings.handMode === "single") {
-    resetPose();
-    setPause(wasPaused);
+    bindCastHand(settings.hand);
   }
   updateLabels();
   save();
@@ -521,6 +652,7 @@ el("hand-side").addEventListener("change", () => {
 el("mirror").addEventListener("change", () => {
   settings.mirror = el<HTMLInputElement>("mirror").checked;
   ensemble.reset(settings);
+  for(const side of HAND_SIDES)bindCastHand(side);
   setPause(paused);
   save();
   updateLabels();
@@ -597,6 +729,7 @@ el("demo-tilt").addEventListener("input", () => {
 });
 el("reset-settings").addEventListener("click", () => {
   settings = defaultSettings();
+  cast = initialCast(settings);
   resetPose();
   updateModeUI();
   save();
@@ -637,6 +770,7 @@ document.addEventListener("keydown", (event) => {
     calibrationDialog.open ||
     guideDialog.open ||
     characterDialog.open ||
+    castDialog.open ||
     settingsDialog.open ||
     target.matches("input,select,textarea,button,a") ||
     target.isContentEditable ||
@@ -674,7 +808,7 @@ window.addEventListener("blur", () => {
   for (const [key, side] of heldDemoKeys) demos[side].fingers[Number(key) - 1] = 0;
   heldDemoKeys.clear();
 });
-window.addEventListener("pagehide", () => tracker.stop());
+window.addEventListener("pagehide", () => { if(castDirty)save(); tracker.stop(); });
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) ensemble.clear();
 });
@@ -691,7 +825,7 @@ function frame(now: number) {
       if (autoplay) {
         const performance = demoPerformance(character, (now - autoplayStarted) / 1000 + index * 1.5);
         fingers = settings.assignments.map(action => performance.values[action]);
-        x = settings.handMode === "dual" ? (side === "Left" ? 0.25 : 0.75) + (performance.x - 0.5) * 0.7 : performance.x;
+        x = .5 + (performance.x - .5) * .7;
         y = performance.y;
         angle = performance.angle;
       }
@@ -699,7 +833,19 @@ function frame(now: number) {
     }
   }
   for (const side of activeHands(settings)) ensemble.sessions[side].controller.tick(now, dt, settings.smoothing);
-  renderer.drawActors(activeHands(settings).map(side => ({ key: side, pose: ensemble.sessions[side].controller.pose, character: settings.characters[side] })), settings);
+  for(const side of activeHands(settings)) {
+    const member=memberForHand(cast,side);
+    if(member) {
+      const pose=ensemble.sessions[side].controller.pose;
+      if((mode==="live"||autoplay)&&!document.hidden&&document.hasFocus()&&JSON.stringify(member.pose)!==JSON.stringify(pose))castDirty=true;
+      member.pose={...pose};
+    }
+  }
+  renderer.drawActors(cast.members.map(member=>({
+    key:member.id,pose:member.pose,character:member.character,placement:placement(cast,member),
+    control:activeHands(settings).find(side=>cast.controls[side]===member.id),
+    selected:cast.controls[settings.hand]===member.id,
+  })), settings);
   if (now - previousUi > 90) {
     previousUi = now;
     active.controller.fingers.forEach((value, i) => {
@@ -722,7 +868,7 @@ function frame(now: number) {
       : cameraLoading ? "กำลังเตรียมกล้อง" : !cameraOn ? "กล้องปิดอยู่"
       : settings.handMode === "dual" ? `พบมือ ${tracked.length}/2 · ซ้าย ${tracked.includes("Left") ? "✓" : "–"} ขวา ${tracked.includes("Right") ? "✓" : "–"}`
       : tracked.length ? "ตรวจพบมือ · กำลังเชิด" : `รอมือ${settings.hand === "Right" ? "ขวา" : "ซ้าย"}`;
-    el("stage").setAttribute("aria-label", activeHands(settings).map(side => `มือ${side === "Left" ? "ซ้าย" : "ขวา"} ${getCharacter(settings.characters[side]).name} หัน${ensemble.sessions[side].controller.pose.facing === 1 ? "ขวา" : "ซ้าย"}`).join(" · "));
+    el("stage").setAttribute("aria-label", `เวที ${cast.members.length} ตัว · `+activeHands(settings).filter(side=>memberForHand(cast,side)).map(side => `มือ${side === "Left" ? "ซ้าย" : "ขวา"} ควบคุม${getCharacter(settings.characters[side]).name}`).join(" · ")+" · คลิกตัวละครเพื่อสลับควบคุม");
     if (el("stage-state").textContent !== stateText)
       el("stage-state").textContent = stateText;
     el("stage-state").classList.toggle(
@@ -765,6 +911,32 @@ function frame(now: number) {
   }
   requestAnimationFrame(frame);
 }
+for(const side of HAND_SIDES)bindCastHand(side);
+setInterval(()=>{
+  // Only the foreground performance writes continuous poses. Idle preview tabs
+  // must not overwrite a reset or selection made in another studio window.
+  if(!(cameraOn||autoplay)||document.hidden||!document.hasFocus())return;
+  const snapshot=JSON.stringify(cast);
+  if(snapshot===savedCast)return;
+  try { localStorage.setItem("nanglung.cast.v1",snapshot);savedCast=snapshot;castDirty=false; }
+  catch { /* save() reports unavailable storage on explicit changes. */ }
+},2000);
+window.addEventListener("storage",event=>{
+  if(event.key!=="nanglung.cast.v1"||!event.newValue||event.newValue===savedCast)return;
+  try {
+    const value=JSON.parse(event.newValue);
+    if(value?.version!==1||!Array.isArray(value.members))return;
+    cast=parseCast(value,settings);savedCast=JSON.stringify(cast);castDirty=false;
+    autoplay=false;syncCastSettings();
+    for(const side of HAND_SIDES)bindCastHand(side);
+    updateLabels();syncDemoControls();updateModeUI();
+  } catch { /* Ignore malformed values from another tab. */ }
+});
+let poseSaveTimer:ReturnType<typeof setTimeout>;
+for(const event of ["input","change","pointerup","keyup"] as const)document.addEventListener(event,()=>{
+  castDirty=true;clearTimeout(poseSaveTimer);
+  poseSaveTimer=setTimeout(()=>{if(castDirty)save();},300);
+});
 updateLabels();
 updateModeUI();
 syncDemoControls();

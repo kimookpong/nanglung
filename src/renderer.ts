@@ -1,3 +1,4 @@
+import { actorPoint, stagePoint, type StageTransform } from "./stage-geometry";
 import type { Point, Pose, Settings } from "./core";
 import {
   armKinematics,
@@ -10,8 +11,8 @@ import {
 
 const palettes = {
   amber: {
-    center: "#fff0c6",
-    edge: "#d9a966",
+    center: "#fff5cf",
+    edge: "#86624e",
     ink: "#26211c",
     accent: "#a03d2a",
     glow: "#f4c66f",
@@ -127,177 +128,142 @@ export interface StageActor {
   key: string;
   pose: Pose;
   character: CharacterId;
+  placement?: { x:number; baseline:number; scale:number; lean:number };
+  control?: "Left" | "Right";
+  selected?: boolean;
 }
 type ActorBuffer = {
-  puppet: HTMLCanvasElement;
-  previous: HTMLCanvasElement;
-  active: CharacterId | null;
-  previousCharacter: CharacterDefinition | null;
-  changedAt: number;
+  puppet: HTMLCanvasElement; mask: HTMLCanvasElement; previous: HTMLCanvasElement;
+  active: CharacterId | null; previousCharacter: CharacterDefinition | null;
+  changedAt:number; signature:string;
 };
+const layer=()=>{const canvas=document.createElement("canvas");canvas.width=1280;canvas.height=720;return canvas;};
 export class StageRenderer {
-  private context: CanvasRenderingContext2D;
-  private background = document.createElement("canvas");
-  private logo = new Image();
-  private theme = "";
-  private actors = new Map<string, ActorBuffer>();
-  constructor(private canvas: HTMLCanvasElement) {
-    this.context = canvas.getContext("2d")!;
-    canvas.width = this.background.width = 1280;
-    canvas.height = this.background.height = 720;
-    // Cache the supplied logo with the scenery, including fullscreen and themes.
-    this.logo.onload = () => { this.theme = ""; };
-    this.logo.src = `${import.meta.env.BASE_URL}branding/nanglung-logo.png`;
+  private context:CanvasRenderingContext2D;
+  private background=layer();
+  private scene=layer();
+  private focused=layer();
+  private focusMask=layer();
+  private logo=new Image();
+  private theme="";
+  private frameSignature="";
+  private transitionUntil=0;
+  private actors=new Map<string,ActorBuffer>();
+  private targets:{key:string;transform:StageTransform;mask:HTMLCanvasElement}[]=[];
+  constructor(private canvas:HTMLCanvasElement) {
+    this.context=canvas.getContext("2d")!;canvas.width=1280;canvas.height=720;
+    this.logo.onload=()=>{this.frameSignature="";};
+    this.logo.src=`${import.meta.env.BASE_URL}branding/nanglung-logo-transparent.png`;
+    const m=this.focusMask.getContext("2d")!;
+    const gradient=m.createRadialGradient(640,285,110,640,330,690);
+    gradient.addColorStop(0,"#fff");gradient.addColorStop(.35,"#fffffff0");
+    gradient.addColorStop(.65,"#ffffff55");gradient.addColorStop(1,"#ffffff00");
+    m.fillStyle=gradient;m.fillRect(0,0,1280,720);
   }
-  draw(pose: Pose, settings: Settings) {
-    this.drawActors([{ key: "single", pose, character: settings.character }], settings);
-  }
-  drawActors(actors: StageActor[], settings: Settings) {
-    const palette = palettes[settings.theme];
-    if (this.theme !== settings.theme) {
-      this.drawBackdrop(palette);
-      this.theme = settings.theme;
+  hitTest(clientX:number,clientY:number):string|null {
+    const point=stagePoint(clientX,clientY,this.canvas.getBoundingClientRect());
+    if(!point)return null;
+    for(const target of [...this.targets].reverse()) {
+      const local=actorPoint(point.x,point.y,target.transform),x=Math.floor(local.x),y=Math.floor(local.y);
+      if(x<2||y<2||x>=698||y>=798)continue;
+      const pixels=target.mask.getContext("2d")!.getImageData(x-2,y-2,5,5).data;
+      for(let i=3;i<pixels.length;i+=4)if(pixels[i]>80)return target.key;
     }
-    const c = this.context;
-    c.clearRect(0, 0, 1280, 720);
-    c.drawImage(this.background, 0, 0);
-    for (const actor of actors) {
-      let buffers = this.actors.get(actor.key);
-      if (!buffers) {
-        const puppet = document.createElement("canvas"), previous = document.createElement("canvas");
-        puppet.width = previous.width = 700;
-        puppet.height = previous.height = 800;
-        buffers = { puppet, previous, active: null, previousCharacter: null, changedAt: -Infinity };
-        this.actors.set(actor.key, buffers);
+    return null;
+  }
+  draw(pose:Pose,settings:Settings) {this.drawActors([{key:"single",pose,character:settings.character}],settings);}
+  drawActors(actors:StageActor[],settings:Settings) {
+    const frameSignature=JSON.stringify([actors,settings.theme,settings.rods,settings.accessories]);
+    if(frameSignature===this.frameSignature&&!this.transitionUntil)return;
+    this.frameSignature=frameSignature;
+    const palette=palettes[settings.theme];
+    if(this.theme!==settings.theme){this.drawBackdrop(palette);this.theme=settings.theme;}
+    const liveKeys=new Set(actors.map(a=>a.key));
+    for(const key of this.actors.keys())if(!liveKeys.has(key))this.actors.delete(key);
+    const scene=this.scene.getContext("2d")!;
+    scene.clearRect(0,0,1280,720);scene.drawImage(this.background,0,0);
+    this.targets=[];
+    for(const actor of actors) {
+      let buffers=this.actors.get(actor.key);
+      if(!buffers) {
+        const puppet=document.createElement("canvas"),mask=document.createElement("canvas"),previous=document.createElement("canvas");
+        puppet.width=mask.width=previous.width=700;puppet.height=mask.height=previous.height=800;
+        buffers={puppet,mask,previous,active:null,previousCharacter:null,changedAt:-Infinity,signature:""};
+        this.actors.set(actor.key,buffers);
       }
-      const character = getCharacter(actor.character), pose = actor.pose;
-      const now = performance.now();
-      if (buffers.active !== character.id) {
-        const previous = buffers.previous.getContext("2d")!;
-        previous.clearRect(0, 0, 700, 800);
-        previous.drawImage(buffers.puppet, 0, 0);
-        buffers.previousCharacter = buffers.active ? getCharacter(buffers.active) : null;
-        buffers.active = character.id;
-        buffers.changedAt = now;
+      const character=getCharacter(actor.character),pose=actor.pose,now=performance.now();
+      if(buffers.active!==character.id) {
+        const old=buffers.previous.getContext("2d")!;old.clearRect(0,0,700,800);old.drawImage(buffers.puppet,0,0);
+        buffers.previousCharacter=buffers.active?getCharacter(buffers.active):null;
+        if(buffers.active)this.transitionUntil=performance.now()+240;
+        buffers.active=character.id;buffers.changedAt=now;
       }
-      const pc = buffers.puppet.getContext("2d")!;
-      pc.clearRect(0, 0, 700, 800);
-      pc.save();
-      pc.translate(350, 400);
-      paintCharacter(pc, character, pose, palette.ink, settings.rods, settings.accessories);
-      pc.restore();
-      const blend = Math.min(1, (now - buffers.changedAt) / 240);
-      const eased = blend * blend * (3 - 2 * blend);
-      const scale = actors.length > 1 ? 0.86 : 1;
-      const draw = (buffer: HTMLCanvasElement, def: CharacterDefinition, alpha: number) => {
-        c.save();
-        c.globalAlpha = alpha;
-        c.translate(pose.x * 1280, pose.y * 720 + 170 - def.footY * scale);
-        c.rotate(pose.tilt);
-        c.scale(pose.facing * scale, scale);
-        c.drawImage(buffer, -350, -400);
-        c.restore();
+      const signature=JSON.stringify([actor.character,pose,settings.theme,settings.rods,settings.accessories]);
+      if(signature!==buffers.signature) {
+        for(const [buffer,rods] of [[buffers.puppet,settings.rods],[buffers.mask,false]] as const) {
+          const pc=buffer.getContext("2d")!;pc.clearRect(0,0,700,800);pc.save();pc.translate(350,400);
+          paintCharacter(pc,character,pose,palette.ink,rods,settings.accessories);pc.restore();
+        }
+        buffers.signature=signature;
+      }
+      const placement=actor.placement;
+      const scale=placement?.scale??1.46;
+      const x=(placement?placement.x+(pose.x-.5)*.45:pose.x)*1280;
+      const baseline=placement?placement.baseline+(pose.y-.53)*360:pose.y*720+365;
+      const transform:StageTransform={x,y:baseline-character.footY*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0)};
+      const draw=(buffer:HTMLCanvasElement,def:CharacterDefinition,alpha:number)=>{
+        scene.save();scene.globalAlpha=alpha;scene.translate(x,baseline-def.footY*scale);
+        scene.rotate(transform.angle);scene.scale(pose.facing*scale,scale);scene.drawImage(buffer,-350,-400);scene.restore();
       };
-      if (buffers.previousCharacter && blend < 1) draw(buffers.previous, buffers.previousCharacter, 1 - eased);
-      draw(buffers.puppet, character, buffers.previousCharacter ? eased : 1);
+      const blend=Math.min(1,(now-buffers.changedAt)/240),eased=blend*blend*(3-2*blend);
+      if(buffers.previousCharacter&&blend<1)draw(buffers.previous,buffers.previousCharacter,1-eased);
+      draw(buffers.puppet,character,buffers.previousCharacter?eased:1);
+      this.targets.push({key:actor.key,transform,mask:buffers.mask});
     }
-    c.fillStyle = "#382b24";
-    c.fillRect(0, 680, 1280, 40);
-    c.fillStyle = "#bd914a";
-    c.fillRect(0, 679, 1280, 2);
-    c.fillStyle = "#f6d89144";
-    c.fillRect(0, 683, 1280, 1);
-    c.font = "11px monospace";
-    c.textAlign = "center";
-    c.fillStyle = "#f6d89199";
-    c.fillText("N A N G L U N G   ·   S H A D O W   T H E A T R E", 640, 704);
+    const c=this.context;
+    c.clearRect(0,0,1280,720);
+    // A sharp central field blends continuously into defocused cloth and figures.
+    c.save();c.filter="blur(7px)";c.drawImage(this.scene,-9,-5,1298,730);c.restore();
+    const f=this.focused.getContext("2d")!;f.clearRect(0,0,1280,720);f.drawImage(this.scene,0,0);
+    f.globalCompositeOperation="destination-in";f.drawImage(this.focusMask,0,0);f.globalCompositeOperation="source-over";
+    c.drawImage(this.focused,0,0);
+    // The logo stays crisp; it is artwork with real alpha, without a sign board.
+    if(this.logo.complete&&this.logo.naturalWidth>0) {
+      const width=190,height=width*this.logo.naturalHeight/this.logo.naturalWidth;
+      c.save();c.globalAlpha=.93;c.drawImage(this.logo,(1280-width)/2,18,width,height);c.restore();
+    }
+    // Small hand tags identify control without changing the puppet's silhouette.
+    for(const actor of actors.filter(a=>a.control)) {
+      const target=this.targets.find(t=>t.key===actor.key)!;
+      const x=Math.max(65,Math.min(1215,target.transform.x));
+      c.save();c.font="14px Thonburi, sans-serif";c.textAlign="center";
+      c.fillStyle=actor.selected?"#3d281edb":"#3d281e99";
+      c.beginPath();c.roundRect(x-52,680,104,27,13);c.fill();
+      c.strokeStyle=actor.control==="Left"?"#9ed8ce":"#e2ba75";c.lineWidth=actor.selected?2:1;c.stroke();
+      c.fillStyle="#fff0cf";c.fillText(`${actor.control==="Left"?"L":"R"} · ${getCharacter(actor.character).name}`,x,699);c.restore();
+    }
+    if(performance.now()>=this.transitionUntil)this.transitionUntil=0;
   }
-  private drawBackdrop(p: Palette) {
-    const c = this.background.getContext("2d")!;
-    const light = c.createRadialGradient(640, 330, 30, 640, 330, 760);
-    light.addColorStop(0, p.center);
-    light.addColorStop(0.6, p.center);
-    light.addColorStop(1, p.edge);
-    c.fillStyle = light;
-    c.fillRect(0, 0, 1280, 720);
-    c.strokeStyle = "#5a401708";
-    c.lineWidth = 0.7;
-    for (let y = 0; y < 680; y += 4) {
-      c.beginPath();
-      c.moveTo(0, y);
-      c.lineTo(1280, y);
-      c.stroke();
+  private drawBackdrop(p:Palette) {
+    const c=this.background.getContext("2d")!;
+    const light=c.createRadialGradient(630,255,10,640,310,790);
+    light.addColorStop(0,p.center);light.addColorStop(.23,p.center);
+    light.addColorStop(.55,p.edge);light.addColorStop(1,"#38251f");
+    c.fillStyle=light;c.fillRect(0,0,1280,720);
+    // Deterministic fine woven grain and a gently sagging seam in the cloth.
+    let seed=4201;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+    for(let i=0;i<27000;i++) {
+      c.fillStyle=random()>.5?"#fff5d20c":"#3e261510";
+      c.fillRect(random()*1280,random()*720,random()*2+.3,.7);
     }
-    c.strokeStyle = "#fff7dc19";
-    for (let x = 0; x < 1280; x += 6) {
-      c.beginPath();
-      c.moveTo(x, 0);
-      c.lineTo(x, 680);
-      c.stroke();
-    }
-    // Botanical silhouettes at the edges of the illuminated cloth.
-    for (const side of [-1, 1]) {
-      c.save();
-      c.translate(side === -1 ? 120 : 1160, 680);
-      c.scale(side, 1);
-      c.fillStyle = p.ink;
-      c.globalAlpha = 0.09;
-      shape(c, "M0 0 Q25 -145 2 -250 Q16 -155 8 0Z");
-      for (let i = 0; i < 9; i++) {
-        const y = -20 - i * 23;
-        shape(
-          c,
-          `M5 ${y} Q${65 - i * 3} ${y - 30} ${72 - i * 5} ${y - 65} Q30 ${y - 55} 5 ${y}Z`,
-        );
-        shape(
-          c,
-          `M5 ${y - 6} Q-50 ${y - 22} -62 ${y - 52} Q-8 ${y - 48} 5 ${y - 6}Z`,
-        );
-      }
-      c.restore();
-    }
-    // A restrained proscenium, with scalloped cloth and punched ornament.
-    c.fillStyle = p.accent;
-    shape(
-      c,
-      "M0 0 H1280 V28 Q1210 81 1140 29 Q1070 81 1000 29 Q930 81 860 29 Q790 81 720 29 Q640 86 560 29 Q490 81 420 29 Q350 81 280 29 Q210 81 140 29 Q70 81 0 28Z",
-    );
-    c.fillRect(0, 0, 15, 680);
-    c.fillRect(1265, 0, 15, 680);
-    c.fillStyle = "#f0c36e";
-    c.fillRect(0, 0, 1280, 3);
-    for (let x = 36; x < 1280; x += 35) {
-      c.save();
-      c.translate(x, 17);
-      c.rotate(Math.PI / 4);
-      c.fillRect(-2, -2, 4, 4);
-      c.restore();
-    }
-    if (this.logo.complete && this.logo.naturalWidth > 0) {
-      const width = 260, height = width * this.logo.naturalHeight / this.logo.naturalWidth;
-      const x = (1280 - width) / 2, y = 14;
-      // A cream sign keeps the original artwork intact against every backdrop.
-      c.save();
-      c.shadowColor = "#26190d55";
-      c.shadowBlur = 12;
-      c.shadowOffsetY = 4;
-      c.fillStyle = "#faf4e2";
-      c.beginPath();
-      c.roundRect(x - 7, y - 7, width + 14, height + 14, 5);
-      c.fill();
-      c.shadowColor = "transparent";
-      c.strokeStyle = "#c49a58";
-      c.lineWidth = 1.5;
-      c.stroke();
-      c.drawImage(this.logo, x, y, width, height);
-      c.restore();
-    }
-    c.fillStyle = "#754e2630";
-    c.font = "12px monospace";
-    c.textAlign = "left";
-    c.fillText("๐๑ / เวทีหนังตะลุง", 44, 95);
-    c.textAlign = "right";
-    c.fillText("ห้านิ้วต่อหนึ่งตัวละคร", 1236, 95);
+    c.lineWidth=.6;c.strokeStyle="#fff1ca10";
+    for(let y=0;y<720;y+=3){c.beginPath();c.moveTo(0,y);c.lineTo(1280,y+1);c.stroke();}
+    c.strokeStyle="#4d2d192b";c.lineWidth=2;
+    c.beginPath();c.moveTo(-10,47);c.bezierCurveTo(390,74,880,19,1290,35);c.stroke();
+    c.strokeStyle="#fff1cd33";c.lineWidth=1;c.beginPath();c.moveTo(-10,50);c.bezierCurveTo(390,77,880,22,1290,38);c.stroke();
+    const shade=c.createRadialGradient(640,310,240,640,360,790);
+    shade.addColorStop(0,"#25150e00");shade.addColorStop(.6,"#25150e0c");shade.addColorStop(1,"#25150e70");
+    c.fillStyle=shade;c.fillRect(0,0,1280,720);
   }
 }
 

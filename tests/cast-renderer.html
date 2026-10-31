@@ -1,0 +1,34 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>NangLung — Cast renderer check</title><style>body{margin:20px;background:#efe6d5;font:14px sans-serif}canvas{display:block;width:900px;height:540px;max-width:95vw;object-fit:contain;background:#211b16}pre{white-space:pre-wrap}</style><h1>ตรวจการคลิกตัวละครและฉากหลายตัว</h1><canvas id="stage"></canvas><pre id="result">กำลังตรวจ…</pre><script type="module">
+import {StageRenderer} from '/src/renderer.ts';
+import {defaultSettings,restPose} from '/src/core.ts';
+import {getCharacter} from '/src/characters.ts';
+const canvas=document.getElementById('stage'),renderer=new StageRenderer(canvas),settings=defaultSettings();
+const actors=[{key:'left',character:'theng',pose:{...restPose(),tilt:.18},placement:{x:.3,baseline:740,scale:1.3,lean:0}},{key:'right',character:'prawit',pose:{...restPose(),facing:-1,tilt:-.13},placement:{x:.7,baseline:740,scale:1.3,lean:0}}];
+renderer.drawActors(actors,settings);
+const rect=canvas.getBoundingClientRect(),scale=Math.min(rect.width/1280,rect.height/720);
+const offset={x:rect.left+(rect.width-1280*scale)/2,y:rect.top+(rect.height-720*scale)/2};
+const checks=[];
+for(const a of actors){
+ const foot=getCharacter(a.character).footY;
+ // Search a small torso region to avoid choosing a deliberate leather cutout.
+ let found=false;
+ for(let localY=-110;localY<-20&&!found;localY+=12)for(let localX=-20;localX<=20&&!found;localX+=8){
+  const dx=localX*a.pose.facing*a.placement.scale,dy=localY*a.placement.scale;
+  const x=a.placement.x*1280+dx*Math.cos(a.pose.tilt)-dy*Math.sin(a.pose.tilt);
+  const y=a.placement.baseline-foot*a.placement.scale+dx*Math.sin(a.pose.tilt)+dy*Math.cos(a.pose.tilt);
+  found=renderer.hitTest(offset.x+x*scale,offset.y+y*scale)===a.key;
+ }
+ checks.push({name:a.key+' rotated puppet picking',pass:found});
+}
+checks.push({name:'letterbox rejection',pass:renderer.hitTest(rect.left+rect.width/2,rect.top+1)===null});
+renderer.drawActors([actors[0]],settings);
+checks.push({name:'removed actor no longer selectable',pass:renderer.hitTest(offset.x+.7*1280*scale,offset.y+400*scale)===null});
+const crowded=Array.from({length:12},(_,i)=>({...actors[i%2],key:'actor-'+i,placement:{x:.08+i*.076,baseline:760,scale:1.24,lean:0}}));
+const times=[];
+for(let frame=0;frame<28;frame++){
+ await new Promise(requestAnimationFrame);const start=performance.now();
+ crowded[0].pose={...crowded[0].pose,mouth:(Math.sin(frame)+1)/2};renderer.drawActors(crowded,settings);
+ if(frame>3)times.push(performance.now()-start);
+}
+document.getElementById('result').textContent=JSON.stringify({checks,pass:checks.every(c=>c.pass),drawSubmission12ActorsAverageMs:Math.round(times.reduce((a,b)=>a+b)/times.length*10)/10},null,2);
+</script></html>

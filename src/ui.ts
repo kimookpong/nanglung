@@ -13,6 +13,7 @@ const icons = {
   help: '<circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5m0 3v.1"/>',
   check: '<path d="M5 12l4 4L19 6"/>',
   close: '<path d="M6 6l12 12M6 18L18 6"/>',
+  plus: '<path d="M12 4v16M4 12h16"/>',
 };
 export function icon(name: keyof typeof icons) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
@@ -46,12 +47,12 @@ export function renderStudio(settings: Settings) {
   <main class="studio-grid">
     <section class="stage-column" aria-label="เวทีและตัวควบคุม">
       <div class="stage-shell" id="stage-shell">
-        <canvas id="stage" aria-label="เวทีหนังตะลุง"></canvas>
+        <canvas id="stage" tabindex="0" aria-label="เวทีหนังตะลุง" aria-description="คลิกตัวละครเพื่อเลือกควบคุม หรือใช้ปุ่มลูกศรซ้ายขวาเพื่อสลับตัว"></canvas>
         <div class="stage-paused" id="stage-paused" hidden><span>${icon("pause")} พักการเชิด</span></div>
         <button class="exit-stage" id="exit-stage">${icon("close")} ออกจากเวที</button>
       </div>
       <div class="stage-toolbar">
-        <button id="character-about" class="character-info" aria-label="รู้จักตัวละคร" aria-haspopup="dialog"><strong id="character-name">เท่ง</strong>${icon("help")}</button>
+        <div class="stage-cast-tools"><button id="character-about" class="character-info" aria-label="รู้จักตัวละคร" aria-haspopup="dialog"><strong id="character-name">เท่ง</strong>${icon("help")}</button><button id="cast-button" class="text-button" aria-label="จัดตัวละครบนเวที" aria-haspopup="dialog">${icon("plus")}<span>ตัวละคร <b id="cast-count">2</b></span></button></div>
         <div class="toolbar-actions"><button id="pause" class="icon-button" aria-label="พักการเชิด" title="พัก / เล่นต่อ (Space)">${icon("pause")}</button><button id="reset-pose" class="icon-button" aria-label="รีเซ็ตท่าทาง" title="รีเซ็ตท่าทาง (R)">${icon("reset")}</button><button id="fullscreen" class="text-button" aria-label="เต็มจอ">${icon("expand")}<span>เต็มจอ</span></button></div>
       </div>
       <section class="finger-panel" aria-label="ควบคุมนิ้วทั้งห้า">
@@ -60,7 +61,7 @@ export function renderStudio(settings: Settings) {
       </section>
     </section>
     <aside class="control-column" aria-label="แผงควบคุมการเชิด">
-      <div class="input-source"><div class="mode-switch" role="group" aria-label="แหล่งควบคุม"><button id="mode-demo" class="active">${icon("play")} ทดลอง</button><button id="mode-live">${icon("camera")} ใช้กล้อง</button></div><select id="hand-mode" aria-label="จำนวนมือและตัวละคร" title="หนึ่งมือต่อหนึ่งตัวละคร"><option value="single">1 มือ</option><option value="dual">2 มือ</option></select></div>
+      <div class="input-source"><div class="mode-switch" role="group" aria-label="แหล่งควบคุม"><button id="mode-demo" class="active">${icon("play")} ทดลอง</button><button id="mode-live">${icon("camera")} ใช้กล้อง</button></div><select id="hand-mode" aria-label="จำนวนมือที่ควบคุม" title="หนึ่งมือต่อหนึ่งตัวละครที่เลือก"><option value="single">1 มือ</option><option value="dual">2 มือ</option></select></div>
       <section class="character-panel" aria-label="เลือกตัวหนัง"><div class="character-grid" role="group" aria-label="เลือกตัวละคร">${CHARACTERS.filter(c => MAIN_CAST_IDS.includes(c.id)).map((c) => `<button class="character-choice" data-character="${c.id}" title="${c.fullName ?? c.name}" aria-label="เลือก${c.name}" aria-pressed="false"><img src="${import.meta.env.BASE_URL}characters/${c.id}.svg" alt="" width="60" height="76"/><strong>${c.name}</strong></button>`).join("")}<label class="character-more" id="character-more-label"><span>ตัวหนังอื่น</span><select id="character-more" aria-label="เลือกตัวหนังอื่น"><option value="" disabled>เลือกตัวหนัง…</option>${CHARACTERS.filter(c => !MAIN_CAST_IDS.includes(c.id)).map(c => `<option value="${c.id}">${c.name}</option>`).join("")}</select></label></div></section>
       <div class="camera-preview" id="camera-preview">
         <video id="camera-video" autoplay muted playsinline></video><canvas id="hand-overlay" width="640" height="480"></canvas>
@@ -74,6 +75,15 @@ export function renderStudio(settings: Settings) {
 </div>
 <aside class="camera-alert" id="camera-alert" hidden><p id="camera-error" role="alert"></p><button id="dismiss-camera-error" class="icon-button" aria-label="ปิดข้อความกล้อง">${icon("close")}</button></aside>
 <div class="toast" id="toast" role="status" hidden></div>
+
+<dialog id="cast-dialog" class="dialog cast-dialog" aria-labelledby="cast-title">
+  <div class="dialog-heading"><h2 id="cast-title">ตัวละครบนเวที <span id="cast-total"></span></h2><button id="close-cast" class="icon-button" aria-label="ปิดจัดตัวละคร">${icon("close")}</button></div>
+  <div class="cast-add-row"><select id="cast-new-character" aria-label="ตัวละครที่จะเพิ่ม">${CHARACTERS.map(c=>`<option value="${c.id}">${c.name}</option>`).join("")}</select><select id="cast-new-side" aria-label="ฝั่งที่จะเพิ่ม"><option value="Left">ฝั่งซ้าย</option><option value="Right">ฝั่งขวา</option></select><button id="cast-add" class="primary-button">${icon("plus")} เพิ่ม</button></div>
+  <div class="cast-control-row"><label for="cast-control-hand">ควบคุมด้วย</label><select id="cast-control-hand" aria-label="มือที่ใช้ควบคุมตัวละคร"><option value="Right">มือขวา</option><option value="Left">มือซ้าย</option></select><span>คลิกตัวบนเวทีเพื่อสลับ</span></div>
+  <div id="cast-roster" class="cast-roster"></div>
+  <div class="cast-pagination"><button id="cast-prev" class="secondary-button" aria-label="ตัวละครหน้าก่อน">←</button><span id="cast-page" role="status"></span><button id="cast-next" class="secondary-button" aria-label="ตัวละครหน้าถัดไป">→</button></div>
+  <p id="cast-message" class="cast-message" role="status">ตัวที่ไม่ได้ควบคุมจะคงท่าอยู่บนเวที</p>
+</dialog>
 
 <dialog id="settings-dialog" class="dialog settings-dialog" aria-labelledby="settings-title">
   <div class="dialog-heading"><h2 id="settings-title">ตั้งค่าสตูดิโอ</h2><button id="close-settings" class="icon-button" aria-label="ปิดการตั้งค่า">${icon("close")}</button></div>

@@ -281,6 +281,15 @@ export class PuppetController {
     this.state = Number.isFinite(this.lastSeen) ? "lost" : "idle";
   }
 
+  /** Transfer control without carrying timestamps, a held flip or the previous actor's pose. */
+  adoptPose(pose: Pose, now: number) {
+    this.reset();
+    this.pose = { ...pose };
+    this.target = { ...pose };
+    this.lastSeen = now;
+    this.state = "lost";
+  }
+
   ingest(
     signal: Signal,
     timestamp: number,
