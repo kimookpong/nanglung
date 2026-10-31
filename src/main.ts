@@ -200,7 +200,7 @@ function updateCharacter() {
   el<HTMLAnchorElement>("character-source").href = character.source;
   el("character-source").textContent = character.sourceLabel ?? "แหล่งอ้างอิง ม.อ. ↗";
   const download = el<HTMLAnchorElement>("character-download");
-  download.href = `${import.meta.env.BASE_URL}characters/${character.id}.svg`;
+  download.href = `${import.meta.env.BASE_URL}characters/${character.id}.svg${character.body.image?"?art=user-png-20261031":""}`;
   download.download = `nanglung-${character.id}.svg`;
   el<HTMLSelectElement>("character-more").value = MAIN_CAST_IDS.includes(character.id) ? "" : character.id;
   el("character-more-label").classList.toggle("active", !MAIN_CAST_IDS.includes(character.id));
