@@ -138,12 +138,16 @@ type ActorBuffer = {
 export class StageRenderer {
   private context: CanvasRenderingContext2D;
   private background = document.createElement("canvas");
+  private logo = new Image();
   private theme = "";
   private actors = new Map<string, ActorBuffer>();
   constructor(private canvas: HTMLCanvasElement) {
     this.context = canvas.getContext("2d")!;
     canvas.width = this.background.width = 1280;
     canvas.height = this.background.height = 720;
+    // Cache the supplied logo with the scenery, including fullscreen and themes.
+    this.logo.onload = () => { this.theme = ""; };
+    this.logo.src = `${import.meta.env.BASE_URL}branding/nanglung-logo.png`;
   }
   draw(pose: Pose, settings: Settings) {
     this.drawActors([{ key: "single", pose, character: settings.character }], settings);
@@ -267,6 +271,25 @@ export class StageRenderer {
       c.translate(x, 17);
       c.rotate(Math.PI / 4);
       c.fillRect(-2, -2, 4, 4);
+      c.restore();
+    }
+    if (this.logo.complete && this.logo.naturalWidth > 0) {
+      const width = 260, height = width * this.logo.naturalHeight / this.logo.naturalWidth;
+      const x = (1280 - width) / 2, y = 14;
+      // A cream sign keeps the original artwork intact against every backdrop.
+      c.save();
+      c.shadowColor = "#26190d55";
+      c.shadowBlur = 12;
+      c.shadowOffsetY = 4;
+      c.fillStyle = "#faf4e2";
+      c.beginPath();
+      c.roundRect(x - 7, y - 7, width + 14, height + 14, 5);
+      c.fill();
+      c.shadowColor = "transparent";
+      c.strokeStyle = "#c49a58";
+      c.lineWidth = 1.5;
+      c.stroke();
+      c.drawImage(this.logo, x, y, width, height);
       c.restore();
     }
     c.fillStyle = "#754e2630";
