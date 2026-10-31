@@ -1,8 +1,10 @@
 import type { Pose } from "./core";
 import { THENG_ART } from "./theng-reference";
+import { PRAYUT_ART } from "./prayut-art";
 
 export const CHARACTER_IDS = [
   "theng",
+  "prayut",
   "nunui",
   "sikaew",
   "yodthong",
@@ -50,6 +52,8 @@ export interface CharacterDefinition {
   traits: string;
   gesture: string;
   source: string;
+  sourceLabel?: string;
+  fullName?: string;
   footY: number;
   body: Graphic;
   cloth: Graphic;
@@ -142,7 +146,7 @@ function styleArms(
 }
 
 // Shared vector rig. Theng follows the reference supplied by the user;
-// the remaining characters retain the research-based drawings.
+// Prayut is a contemporary caricature; the other four retain the research-based drawings.
 export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "theng",
@@ -155,9 +159,21 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
     ...THENG_ART,
   },
   {
+    id: "prayut",
+    name: "ประยุทธ์",
+    fullName: "ประยุทธ์ จันทร์โอชา · ตัวละครล้อเลียน",
+    numeral: "๐๒",
+    subtitle: "ภาพล้อเลียน · สูทคราม · มือประกอบคำ",
+    traits: "ตัวละครล้อเลียนประยุทธ์ จันทร์โอชา ผมสั้นแสกข้าง คิ้วเข้ม แก้มและคางเด่น ชุดสูทคราม เนกไทฟ้า และลายฉลุขอบทองที่ออกแบบขึ้น",
+    gesture: "ยกฝ่ามืออธิบาย สลับชี้ประกอบคำ แล้วพักฟังเท่ง",
+    source: "https://parliamentwatch.wevis.info/politicians/62d24a30-9b4d-49f1-826c-0e2168ad798d",
+    sourceLabel: "ภาพบุคคลอ้างอิง · WeVis ↗",
+    ...PRAYUT_ART,
+  },
+  {
     id: "nunui",
     name: "หนูนุ้ย",
-    numeral: "๐๒",
+    numeral: "๐๓",
     subtitle: "คอตก · พุงยื่น · ฟังก่อนตอบ",
     traits: "รูปเตี้ย จมูกและปากยื่น เคราใต้คาง คอโน้ม และผ้านุ่งเรียบ",
     gesture: "ฟัง ก้มรับเล็กน้อย แล้วค่อยตอบ",
@@ -212,7 +228,7 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "sikaew",
     name: "สีแก้ว",
-    numeral: "๐๓",
+    numeral: "๐๔",
     subtitle: "ศีรษะล้าน · หนักแน่น · พูดจริงทำจริง",
     traits: "อ้วนเตี้ย บ่าแน่น มีโหนกคอ ศีรษะล้าน และผ้าโจงกระเบนลายตาราง",
     gesture: "ยกมือห้าม ค้างท่า แล้วกล่าวตอบอย่างหนักแน่น",
@@ -253,7 +269,7 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "yodthong",
     name: "ยอดทอง",
-    numeral: "๐๔",
+    numeral: "๐๕",
     subtitle: "ผมหยิก · ชอบโอ้อวด · เปลี่ยนท่าไว",
     traits:
       "ผมหยิกเป็นมวล คางและปากเด่น ท้องยื่น ก้นงอน และผ้าโจงกระเบนลายข้าวหลามตัด",
@@ -320,7 +336,7 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "khwanmuang",
     name: "ขวัญเมือง",
-    numeral: "๐๕",
+    numeral: "๐๖",
     subtitle: "จมูกยาว · สุขุม · ผู้นำเข้าสู่เรื่อง",
     traits: "หน้าผากสูง จมูกยาว ปากกว้าง พุงโย้ และผ้านุ่งเรียบ",
     gesture: "ยกมือกล่าวนำ เว้นจังหวะ แล้วหันเชิญเข้าสู่เรื่อง",
@@ -573,5 +589,5 @@ export function characterSvg(
   pose: RigPose = REST_RIG,
   prefix: string = character.id,
 ): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${character.viewBox ?? "-180 -310 360 490"}" role="img" aria-labelledby="${prefix}-title"><title id="${prefix}-title">${character.name} — แบบดิจิทัลจากการศึกษาหนังตะลุง</title>${sceneSvg(characterScene(character, pose), "#29251f", prefix)}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${character.viewBox ?? "-180 -310 360 490"}" role="img" aria-labelledby="${prefix}-title"><title id="${prefix}-title">${character.fullName ?? character.name} — แบบดิจิทัลหนังตะลุง</title>${sceneSvg(characterScene(character, pose), "#29251f", prefix)}</svg>`;
 }

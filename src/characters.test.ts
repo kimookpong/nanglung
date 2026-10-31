@@ -13,7 +13,21 @@ import { demoPerformance } from "./performance";
 
 const flatten = (nodes: SceneNode[]): SceneNode[] =>
   nodes.flatMap((n) => [n, ...flatten(n.children ?? [])]);
-describe("five-character library", () => {
+describe("character library", () => {
+  it("adds Prayut as the second choice and companion without overwriting saved actors", () => {
+    const prayut = CHARACTERS[1];
+    expect(prayut.id).toBe("prayut");
+    expect(prayut.fullName).toContain("ตัวละครล้อเลียน");
+    expect(defaultSettings().characters).toEqual({ Right: "theng", Left: "prayut" });
+    const old = defaultSettings();
+    old.characters.Left = "nunui";
+    old.profiles.Left.calibrated = true;
+    const restored = parseSettings(JSON.parse(JSON.stringify(old)));
+    expect(restored.characters.Left).toBe("nunui");
+    expect(restored.profiles.Left.calibrated).toBe(true);
+    const svg = characterSvg(prayut);
+    for (const color of ["#263954", "#6daec7", "#d3a377", "#d5ad5b"]) expect(svg).toContain(`fill="${color}"`);
+  });
   it("preserves the reference colors and attaches Theng's ornaments to the moving pieces", () => {
     const theng = CHARACTERS.find(c => c.id === "theng")!;
     const scene = flatten(characterScene(theng, { mouth: 1, head: 0.55, leftArm: 1, rightArm: 1 }));
@@ -43,10 +57,10 @@ describe("five-character library", () => {
     expect(parseSettings({ accessories: false }).accessories).toBe(false);
     expect(parseSettings({}).accessories).toBe(true);
   });
-  it("keeps five distinct silhouettes and stable identities", () => {
+  it("keeps distinct silhouettes and stable identities", () => {
     expect(CHARACTERS.map((c) => c.id)).toEqual([...CHARACTER_IDS]);
-    expect(new Set(CHARACTERS.map((c) => c.body.path)).size).toBe(5);
-    expect(new Set(CHARACTERS.map((c) => c.head.graphic.path)).size).toBe(5);
+    expect(new Set(CHARACTERS.map((c) => c.body.path)).size).toBe(CHARACTERS.length);
+    expect(new Set(CHARACTERS.map((c) => c.head.graphic.path)).size).toBe(CHARACTERS.length);
     expect(CHARACTERS.find((c) => c.id === "theng")!.arms.left.hand).toBe(
       "ring",
     );

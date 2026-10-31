@@ -78,7 +78,7 @@ export const defaultProfile = (): Profile => ({
 });
 export const defaultSettings = (): Settings => ({
   character: "theng",
-  characters: { Right: "theng", Left: "nunui" },
+  characters: { Right: "theng", Left: "prayut" },
   handMode: "single",
   accessories: true,
   mirror: true,

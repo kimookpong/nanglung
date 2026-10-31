@@ -25,6 +25,13 @@ export function demoPerformance(id: CharacterId, t: number): DemoPerformance {
     v.head = 0.12 * wave(t, 2.4);
     result.x += 0.055 * Math.sin(t * 0.65);
     result.angle = 0.07 * Math.sin(t * 1.1);
+  } else if (id === "prayut") {
+    const phase = t % 10, speaking = phase < 5.5;
+    v.mouth = speaking ? 0.55 * wave(t, 5.6) : 0;
+    v.rightArm = speaking ? 0.28 + 0.38 * wave(t, 1.5) : 0.16;
+    v.leftArm = speaking ? 0.2 + 0.22 * wave(t + 1, 1.1) : 0.12;
+    v.head = speaking ? 0.1 * wave(t, 2.1) : 0.16;
+    result.angle = 0.018 * Math.sin(t * 1.2);
   } else if (id === "nunui") {
     const phase = t % 9,
       speaking = phase > 3 && phase < 7;

@@ -170,12 +170,13 @@ function updateCharacter() {
     "aria-label",
     `เวทีหนังตะลุง — ${character.name} ขยับตามมือหรือตัวควบคุมทดลอง`,
   );
-  el("about-character-name").textContent = character.name;
+  el("about-character-name").textContent = character.fullName ?? character.name;
   el("about-character-traits").textContent = character.traits;
   el("about-character-gesture").textContent = character.gesture;
   el<HTMLImageElement>("about-character-image").src =
     `${import.meta.env.BASE_URL}characters/${character.id}.svg`;
   el<HTMLAnchorElement>("character-source").href = character.source;
+  el("character-source").textContent = character.sourceLabel ?? "แหล่งอ้างอิง ม.อ. ↗";
   const download = el<HTMLAnchorElement>("character-download");
   download.href = `${import.meta.env.BASE_URL}characters/${character.id}.svg`;
   download.download = `nanglung-${character.id}.svg`;
