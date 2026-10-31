@@ -15,16 +15,14 @@ import { demoPerformance } from "./performance";
 const flatten = (nodes: SceneNode[]): SceneNode[] =>
   nodes.flatMap((n) => [n, ...flatten(n.children ?? [])]);
 describe("character library", () => {
-  it("keeps Maew as the third choice with carved clothing and articulated reference pins", () => {
+  it("keeps Maew as the third choice using the supplied PNG on its moving parts", () => {
     const thaksin = CHARACTERS[2];
     expect(thaksin.id).toBe("thaksin");
     expect(thaksin.fullName).toContain("ทักษิณ ชินวัตร");
     const svg = characterSvg(thaksin);
-    for (const color of ["#111518", "#f0bb7d", "#df2419"]) expect(svg).toContain(`fill="${color}"`);
+    expect(svg).toContain('/characters/artwork/thaksin.png');
     const scene = flatten(characterScene(thaksin, {mouth:1,head:.55,rightArm:1,leftArm:1}));
-    expect(scene.find(n=>n.name==="right-arm-hand")!.children!.some(n=>n.name==="wrist-pin")).toBe(true);
-    expect(scene.find(n=>n.name==="right-arm-forearm")!.children!.some(n=>n.name==="elbow-pin")).toBe(true);
-    expect(scene.find(n=>n.name==="lower-jaw")!.children!.some(n=>n.name==="lower-red-lip")).toBe(true);
+    for(const name of ["right-arm-hand","right-arm-forearm","lower-jaw"])expect(scene.find(n=>n.name===name)?.graphic?.image?.src).toBe('/characters/artwork/thaksin.png');
     const previous = defaultSettings();
     const restored = parseSettings({...previous, character:"thaksin", characters:{...previous.characters,Right:"thaksin"}});
     expect(restored.character).toBe("thaksin");
@@ -42,14 +40,15 @@ describe("character library", () => {
     expect(restored.characters.Left).toBe("nunui");
     expect(restored.profiles.Left.calibrated).toBe(true);
     const svg = characterSvg(prayut);
-    for (const color of ["#111518", "#bd3028", "#d3a377", "#d5ad5b"]) expect(svg).toContain(`fill="${color}"`);
+    expect(svg).toContain('/characters/artwork/prayut.png');
   });
-  it("keeps the named main cast first, true garment cutouts and independent saved choices", () => {
+  it("keeps the named main cast first, original artwork and independent saved choices", () => {
     expect(CHARACTERS.slice(0,5).map(c => c.id)).toEqual(MAIN_CAST_IDS);
     expect(CHARACTERS.slice(0,5).map(c => c.name)).toEqual(["เท่ง", "ไอยุทธ์", "แม้ว", "วิตร", "หนู"]);
     for (const c of CHARACTERS.slice(1,5)) {
-      expect(c.body.holes!.length).toBeGreaterThan(100);
-      expect(c.arms.right.art?.upper.holes!.length).toBeGreaterThan(100);
+      expect(c.body.image?.src).toBe(`/characters/artwork/${c.id}.png`);
+      expect(c.body.exclude!.length).toBe(7);
+      expect(c.arms.right.art?.upper.image?.src).toBe(c.body.image?.src);
       const previous = defaultSettings();
       previous.profiles.Left.calibrated = true;
       const restored = parseSettings({...previous, hand:"Right", character:c.id, characters:{Right:c.id,Left:"nunui"}});
@@ -142,7 +141,7 @@ describe("character library", () => {
         ).toBe(arm.lower);
       }
     });
-    it(`${character.id}: exports self-contained SVG with unique clip references`, () => {
+    it(`${character.id}: exports SVG with unique clip references`, () => {
       const svg = characterSvg(character);
       expect(svg).not.toMatch(
         /NaN|undefined|https?:\/\/(?!www.w3.org)|<script/,

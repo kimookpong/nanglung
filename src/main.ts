@@ -18,7 +18,7 @@ import { demoPerformance } from "./performance";
 import { HandEnsemble, activeHands, handSettings, HAND_SIDES } from "./ensemble";
 import { addMember, initialCast, memberForHand, parseCast, placement, removeMember, selectMember, MAX_CAST, type CastState } from "./cast";
 
-import { icon, renderStudio, fingerNames, actionNames } from "./ui";
+import { icon, renderStudio, fingerNames, actionNames, characterPreview } from "./ui";
 
 let settings: Settings;
 let storageUnavailable = false;
@@ -196,8 +196,7 @@ function updateCharacter() {
   el("about-character-name").textContent = character.fullName ?? character.name;
   el("about-character-traits").textContent = character.traits;
   el("about-character-gesture").textContent = character.gesture;
-  el<HTMLImageElement>("about-character-image").src =
-    `${import.meta.env.BASE_URL}characters/${character.id}.svg`;
+  el("about-character-image").innerHTML = characterPreview(character.id,`about-${character.id}`);
   el<HTMLAnchorElement>("character-source").href = character.source;
   el("character-source").textContent = character.sourceLabel ?? "แหล่งอ้างอิง ม.อ. ↗";
   const download = el<HTMLAnchorElement>("character-download");
@@ -278,7 +277,7 @@ function renderCast() {
     const group=cast.members.filter(m=>m.side===side),visible=group.slice(castPage*2,castPage*2+2);
     return `<section class="cast-group"><h3>ฝั่ง${side==="Left"?"ซ้าย":"ขวา"} · ${group.length}</h3>${visible.map(member=>{
       const character=getCharacter(member.character),hand=HAND_SIDES.find(h=>cast.controls[h]===member.id);
-      return `<div class="cast-member ${cast.controls[settings.hand]===member.id?"selected":""}" data-cast-member="${member.id}"><button class="cast-select" data-select-cast="${member.id}" aria-label="ควบคุม${character.name} ฝั่ง${side==="Left"?"ซ้าย":"ขวา"} ตัวที่${group.indexOf(member)+1}" aria-pressed="${cast.controls[settings.hand]===member.id}"><img src="${import.meta.env.BASE_URL}characters/${member.character}.svg" alt=""/><span><strong>${character.name}</strong><small>${hand?`มือ${hand==="Left"?"ซ้าย":"ขวา"}`:"พักบนเวที"}</small></span></button><button class="cast-small" data-move-cast="${member.id}" aria-label="ย้าย${character.name}ไปฝั่ง${side==="Left"?"ขวา":"ซ้าย"}" title="ย้ายฝั่ง">${side==="Left"?"→":"←"}</button><button class="cast-small" data-remove-cast="${member.id}" aria-label="นำ${character.name}ออกจากเวที" title="นำออกจากเวที" ${cast.members.length<=1?"disabled":""}>×</button></div>`;
+      return `<div class="cast-member ${cast.controls[settings.hand]===member.id?"selected":""}" data-cast-member="${member.id}"><button class="cast-select" data-select-cast="${member.id}" aria-label="ควบคุม${character.name} ฝั่ง${side==="Left"?"ซ้าย":"ขวา"} ตัวที่${group.indexOf(member)+1}" aria-pressed="${cast.controls[settings.hand]===member.id}">${characterPreview(member.character,`cast-${member.id}`)}<span><strong>${character.name}</strong><small>${hand?`มือ${hand==="Left"?"ซ้าย":"ขวา"}`:"พักบนเวที"}</small></span></button><button class="cast-small" data-move-cast="${member.id}" aria-label="ย้าย${character.name}ไปฝั่ง${side==="Left"?"ขวา":"ซ้าย"}" title="ย้ายฝั่ง">${side==="Left"?"→":"←"}</button><button class="cast-small" data-remove-cast="${member.id}" aria-label="นำ${character.name}ออกจากเวที" title="นำออกจากเวที" ${cast.members.length<=1?"disabled":""}>×</button></div>`;
     }).join("")||'<p class="cast-empty">ไม่มีตัวละครในหน้านี้</p>'}</section>`;
   }).join("");
   el("cast-page").textContent=`${castPage+1} / ${pageCount}`;

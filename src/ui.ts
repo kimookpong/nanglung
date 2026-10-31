@@ -1,5 +1,13 @@
 import { ACTIONS, FINGERS, type Action, type Settings } from "./core";
-import { CHARACTERS, MAIN_CAST_IDS } from "./characters";
+import { CHARACTERS, MAIN_CAST_IDS, characterSvg, getCharacter, type CharacterId } from "./characters";
+
+// Inline SVG can share the original PNG with Canvas; SVG loaded through <img>
+// cannot load external images and would require a large embedded copy per tile.
+export function characterPreview(id:CharacterId,prefix:string) {
+  return characterSvg(getCharacter(id),undefined,prefix)
+    .replace('role="img"','class="puppet-preview" aria-hidden="true"')
+    .replaceAll('href="/characters/artwork/',`href="${import.meta.env.BASE_URL}characters/artwork/`);
+}
 
 const icons = {
   camera:
@@ -62,7 +70,7 @@ export function renderStudio(settings: Settings) {
     </section>
     <aside class="control-column" aria-label="แผงควบคุมการเชิด">
       <div class="input-source"><div class="mode-switch" role="group" aria-label="แหล่งควบคุม"><button id="mode-demo" class="active">${icon("play")} ทดลอง</button><button id="mode-live">${icon("camera")} ใช้กล้อง</button></div><select id="hand-mode" aria-label="จำนวนมือที่ควบคุม" title="หนึ่งมือต่อหนึ่งตัวละครที่เลือก"><option value="single">1 มือ</option><option value="dual">2 มือ</option></select></div>
-      <section class="character-panel" aria-label="เลือกตัวหนัง"><div class="character-grid" role="group" aria-label="เลือกตัวละคร">${CHARACTERS.filter(c => MAIN_CAST_IDS.includes(c.id)).map((c) => `<button class="character-choice" data-character="${c.id}" title="${c.fullName ?? c.name}" aria-label="เลือก${c.name}" aria-pressed="false"><img src="${import.meta.env.BASE_URL}characters/${c.id}.svg" alt="" width="60" height="76"/><strong>${c.name}</strong></button>`).join("")}<label class="character-more" id="character-more-label"><span>ตัวหนังอื่น</span><select id="character-more" aria-label="เลือกตัวหนังอื่น"><option value="" disabled>เลือกตัวหนัง…</option>${CHARACTERS.filter(c => !MAIN_CAST_IDS.includes(c.id)).map(c => `<option value="${c.id}">${c.name}</option>`).join("")}</select></label></div></section>
+      <section class="character-panel" aria-label="เลือกตัวหนัง"><div class="character-grid" role="group" aria-label="เลือกตัวละคร">${CHARACTERS.filter(c => MAIN_CAST_IDS.includes(c.id)).map((c) => `<button class="character-choice" data-character="${c.id}" title="${c.fullName ?? c.name}" aria-label="เลือก${c.name}" aria-pressed="false">${characterPreview(c.id,`choice-${c.id}`)}<strong>${c.name}</strong></button>`).join("")}<label class="character-more" id="character-more-label"><span>ตัวหนังอื่น</span><select id="character-more" aria-label="เลือกตัวหนังอื่น"><option value="" disabled>เลือกตัวหนัง…</option>${CHARACTERS.filter(c => !MAIN_CAST_IDS.includes(c.id)).map(c => `<option value="${c.id}">${c.name}</option>`).join("")}</select></label></div></section>
       <div class="camera-preview" id="camera-preview">
         <video id="camera-video" autoplay muted playsinline></video><canvas id="hand-overlay" width="640" height="480"></canvas>
         <div class="camera-empty" id="camera-empty">${icon("camera")}<strong id="camera-empty-title">กล้องยังไม่เปิด</strong><span id="camera-empty-copy">หันฝ่ามือเข้ากล้อง ให้เห็นนิ้วครบ</span></div>
@@ -113,5 +121,5 @@ export function renderStudio(settings: Settings) {
   <p id="calibration-live" class="calibration-live" role="status"></p><div class="capture-progress"><span id="capture-progress"></span></div><p id="calibration-error" class="inline-error" role="alert"></p><div class="dialog-actions"><button id="restart-calibration" class="text-button">เริ่มใหม่</button><button id="capture" class="primary-button">เก็บค่าท่านี้</button></div>
 </dialog>
 <dialog id="guide-dialog" class="dialog guide-dialog" aria-labelledby="guide-title"><div class="dialog-heading"><h2 id="guide-title">เริ่มเชิดตัวหนัง</h2><button id="close-guide" class="icon-button" aria-label="ปิดวิธีใช้งาน">${icon("close")}</button></div><ol class="guide-steps"><li><b>เลือกหนึ่งหรือสองมือ</b><span>เลือก “2 มือ” เพื่อเชิดสองตัว เลือกซ้าย/ขวาแล้วเปลี่ยนตัวละคร</span></li><li><b>เปิดกล้อง</b><span>เลือกมือที่ใช้และหันฝ่ามือเข้ากล้อง</span></li><li><b>ปรับเทียบมือ</b><span>เก็บสี่ท่า โหมดสองมือให้ปรับเทียบแยกซ้าย/ขวา</span></li><li><b>หันตัว</b><span>งอก้อยค้าง แล้วปล่อยก่อนสั่งซ้ำ</span></li></ol><div class="shortcut-list"><span><kbd>Space</kbd>พัก</span><span><kbd>R</kbd>รีเซ็ต</span><span><kbd>F</kbd>เต็มจอ</span></div></dialog>
-<dialog id="character-dialog" class="dialog character-dialog" aria-labelledby="about-character-name"><div class="dialog-heading"><h2 id="about-character-name"></h2><button id="close-character" class="icon-button" aria-label="ปิดข้อมูลตัวละคร">${icon("close")}</button></div><div class="character-detail"><img id="about-character-image" alt="" width="170" height="230"/><div><p id="about-character-traits"></p><span>ท่าทดลอง</span><p id="about-character-gesture"></p></div></div><p class="guide-footnote">งานวาดดิจิทัลจากการศึกษา รูปและท่าดัดแปลง ยังไม่ได้ตรวจทานโดยครูหนัง</p><div class="character-links"><a id="character-source" target="_blank" rel="noopener noreferrer">แหล่งอ้างอิง ม.อ. ↗</a><a id="character-download" download>ดาวน์โหลด SVG ↓</a></div></dialog>`;
+<dialog id="character-dialog" class="dialog character-dialog" aria-labelledby="about-character-name"><div class="dialog-heading"><h2 id="about-character-name"></h2><button id="close-character" class="icon-button" aria-label="ปิดข้อมูลตัวละคร">${icon("close")}</button></div><div class="character-detail"><div id="about-character-image" class="character-preview"></div><div><p id="about-character-traits"></p><span>ท่าทดลอง</span><p id="about-character-gesture"></p></div></div><p class="guide-footnote">งานวาดดิจิทัลจากการศึกษา รูปและท่าดัดแปลง ยังไม่ได้ตรวจทานโดยครูหนัง</p><div class="character-links"><a id="character-source" target="_blank" rel="noopener noreferrer">แหล่งอ้างอิง ม.อ. ↗</a><a id="character-download" download>ดาวน์โหลด SVG ↓</a></div></dialog>`;
 }

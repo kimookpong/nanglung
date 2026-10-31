@@ -35,6 +35,20 @@ const palettes = {
 type Palette = typeof palettes.amber;
 
 const paths = new Map<string, Path2D>();
+const artwork = new Map<string,HTMLImageElement>();
+let artworkRevision = 0;
+function imageAsset(src:string) {
+  let image=artwork.get(src);
+  if(!image) {
+    image=new Image();image.onload=()=>{artworkRevision++;};
+    image.src=`${import.meta.env.BASE_URL}${src.replace(/^\//,"")}`;
+    artwork.set(src,image);
+  }
+  return image;
+}
+function cachedPath(data:string) {
+  let path=paths.get(data);if(!path){path=new Path2D(data);paths.set(data,path);}return path;
+}
 function shape(c: CanvasRenderingContext2D, data: string) {
   let path = paths.get(data);
   if (!path) {
@@ -56,6 +70,14 @@ function drawScene(c: CanvasRenderingContext2D, nodes: SceneNode[]) {
     c.rotate(node.rotation ?? 0);
     if (node.graphic) {
       const g = node.graphic;
+      if(g.image) {
+        const image=imageAsset(g.image.src);
+        if(image.complete&&image.naturalWidth>0) {
+          c.save();c.clip(cachedPath(g.path+(g.holes??"")),"evenodd");
+          for(const exclusion of g.exclude??[])c.clip(cachedPath("M-1000 -1000H1000V1000H-1000Z "+exclusion),"evenodd");
+          c.transform(...g.image.matrix);c.drawImage(image,0,0,g.image.width,g.image.height);c.restore();
+        }
+      } else {
       if (g.fill && g.fill !== "none") c.fillStyle = g.fill;
       if (g.fill !== "none" && g.holes) {
         let clip = paths.get(g.path);
@@ -82,6 +104,7 @@ function drawScene(c: CanvasRenderingContext2D, nodes: SceneNode[]) {
         c.lineCap = "round";
         c.lineJoin = "round";
         c.stroke(outline);
+      }
       }
     }
     if (node.children) drawScene(c, node.children);
@@ -173,7 +196,7 @@ export class StageRenderer {
   }
   draw(pose:Pose,settings:Settings) {this.drawActors([{key:"single",pose,character:settings.character}],settings);}
   drawActors(actors:StageActor[],settings:Settings) {
-    const frameSignature=JSON.stringify([actors,settings.theme,settings.rods,settings.accessories]);
+    const frameSignature=JSON.stringify([artworkRevision,actors,settings.theme,settings.rods,settings.accessories]);
     if(frameSignature===this.frameSignature&&!this.transitionUntil)return;
     this.frameSignature=frameSignature;
     const palette=palettes[settings.theme];
@@ -198,7 +221,7 @@ export class StageRenderer {
         if(buffers.active)this.transitionUntil=performance.now()+240;
         buffers.active=character.id;buffers.changedAt=now;
       }
-      const signature=JSON.stringify([actor.character,pose,settings.theme,settings.rods,settings.accessories]);
+      const signature=JSON.stringify([artworkRevision,actor.character,pose,settings.theme,settings.rods,settings.accessories]);
       if(signature!==buffers.signature) {
         for(const [buffer,rods] of [[buffers.puppet,settings.rods],[buffers.mask,false]] as const) {
           const pc=buffer.getContext("2d")!;pc.clearRect(0,0,700,800);pc.save();pc.translate(350,400);

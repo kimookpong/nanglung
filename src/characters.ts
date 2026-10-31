@@ -1,9 +1,6 @@
 import type { Pose } from "./core";
 import { THENG_ART } from "./theng-reference";
-import { PRAYUT_ART } from "./prayut-art";
-import { THAKSIN_ART } from "./thaksin-art";
-import { PRAWIT_ART, ANUTIN_ART } from "./contemporary-art";
-import { leatherCostume } from "./leather-style";
+import { USER_PUPPETS } from "./user-puppets";
 
 export const CHARACTER_IDS = [
   "theng",
@@ -25,6 +22,8 @@ export interface Graphic {
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+  image?: { src:string; width:number; height:number; matrix:readonly [number,number,number,number,number,number] };
+  exclude?: string[];
 }
 export interface SceneNode {
   name: string;
@@ -155,7 +154,7 @@ function styleArms(
 }
 
 // Shared vector rig. Theng follows the reference supplied by the user;
-// Four contemporary caricatures share a carved-leather costume language.
+// Four contemporary caricatures use the supplied PNGs with articulated clip stencils.
 export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "theng",
@@ -172,48 +171,48 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
     name: "ไอยุทธ์",
     fullName: "ไอยุทธ์ · ประยุทธ์ จันทร์โอชา · ตัวละครล้อเลียน",
     numeral: "๐๒",
-    subtitle: "คิ้วเข้ม · มือชี้ · ลายเถาใบ",
-    traits: "ไอยุทธ์ ตัวละครล้อเลียนประยุทธ์ จันทร์โอชา ผมสั้นแสกข้าง คิ้วเข้ม แก้มและคางเด่น ชุดหนังดำฉลุลายเถาใบ เนกไทแดง ขอบทอง และหมุดข้อต่อ",
+    subtitle: "เครื่องแบบดำ · ขอบทอง · มือชี้",
+    traits: "ไอยุทธ์ ตัวละครล้อเลียนประยุทธ์ จันทร์โอชา ใช้ภาพใหม่ของผู้ใช้: เครื่องแบบดำ ขอบทอง อินทรธนู แถบสีหน้าอก เข็มขัด และมือชี้ คงลายเส้นและพื้นผิวจากภาพจริง",
     gesture: "ยกฝ่ามืออธิบาย สลับชี้ประกอบคำ แล้วพักฟังเท่ง",
-    source: "https://parliamentwatch.wevis.info/politicians/62d24a30-9b4d-49f1-826c-0e2168ad798d",
-    sourceLabel: "ภาพบุคคลอ้างอิง · WeVis ↗",
-    ...leatherCostume(PRAYUT_ART),
+    source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
+    sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
+    ...USER_PUPPETS.prayut,
   },
   {
     id: "thaksin",
     name: "แม้ว",
     fullName: "แม้ว · ทักษิณ ชินวัตร · ตัวละครล้อเลียน",
     numeral: "๐๓",
-    subtitle: "ยิ้มตาหยี · ผายมือ · ลายเถาใบ",
-    traits: "แม้ว ตัวละครล้อเลียนทักษิณ ชินวัตร ผมแสกปัด ยิ้มตาหยี สูทหนังดำฉลุลายเถาใบ เนกไทแดง เข็มธงไทย และหมุดข้อต่อ ปรับจากภาพอ้างอิงผู้ใช้ให้เข้าชุดหลัก",
+    subtitle: "สูทดำ · ผ้าลายแดงทอง · มือชี้",
+    traits: "แม้ว ตัวละครล้อเลียนทักษิณ ชินวัตร ใช้ภาพใหม่ของผู้ใช้: ผมปัด ยิ้ม สูทดำ เนกไทแดง เข็มธงไทย ผ้านุ่งลายแดงทองเขียว และรองเท้าปลายงอน คงรายละเอียดจากภาพจริง",
     gesture: "ยกฝ่ามือรับบทสนทนา ยิ้มตอบ และผายมือประกอบคำ",
-    source: "https://github.com/kimookpong/nanglung/blob/main/docs/THAKSIN_CHARACTER.md",
-    sourceLabel: "รายละเอียดแบบจากภาพผู้ใช้ ↗",
-    ...leatherCostume({...THAKSIN_ART, decorations: THAKSIN_ART.decorations?.filter(n => !/^(sash|belt|tail|knot)/.test(n.name))}),
+    source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
+    sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
+    ...USER_PUPPETS.thaksin,
   },
   {
     id: "prawit",
     name: "วิตร",
     fullName: "วิตร · ประวิตร วงษ์สุวรรณ · ตัวละครล้อเลียน",
     numeral: "๐๔",
-    subtitle: "ทรงป้อม · แก้มเต็ม · เนกไททอง",
-    traits: "วิตร ตัวละครล้อเลียนประวิตร วงษ์สุวรรณ สัดส่วนเตี้ยป้อม ศีรษะกลม แก้มเต็ม ตาหรี่ ผมสั้นเปิดหน้าผาก สูทหนังดำฉลุลายเถาใบและเนกไททอง",
+    subtitle: "แก้มเต็ม · เครื่องแบบดำ · ขอบทอง",
+    traits: "วิตร ตัวละครล้อเลียนประวิตร วงษ์สุวรรณ ใช้ภาพใหม่ของผู้ใช้: รูปร่างป้อม แก้มเต็ม เครื่องแบบดำ ขอบทอง แถบสีหน้าอก และมือชี้ คงรูปหน้าและพื้นผิวจากภาพจริง",
     gesture: "ยกฝ่ามือใกล้ลำตัว เว้นช่วงฟัง แล้วพยักหน้ารับบทสนทนา",
-    source: "https://parliamentwatch.wevis.info/politicians/d5409bcf-f304-423e-9079-a593b9ef5dbd",
-    sourceLabel: "ภาพบุคคลอ้างอิง · WeVis ↗",
-    ...PRAWIT_ART,
+    source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
+    sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
+    ...USER_PUPPETS.prawit,
   },
   {
     id: "anutin",
     name: "หนู",
     fullName: "หนู · อนุทิน ชาญวีรกูล · ตัวละครล้อเลียน",
     numeral: "๐๕",
-    subtitle: "ไหล่กว้าง · กรามชัด · เนกไทคราม",
-    traits: "หนู ตัวละครล้อเลียนอนุทิน ชาญวีรกูล ไหล่กว้าง ผมสั้น คิ้วหนา กรามชัด ยิ้มเล็กน้อย ชุดหนังดำฉลุลายเถาใบและเนกไทคราม ต่างจากตัวหนูนุ้ยในคลังดั้งเดิม",
+    subtitle: "ชุดคราม · ผ้าคาดธงไทย · มือชี้",
+    traits: "หนู ตัวละครล้อเลียนอนุทิน ชาญวีรกูล ใช้ภาพใหม่ของผู้ใช้: ชุดคราม ตราหน้าอก ผ้าคาดเอวสีธงไทย นาฬิกาข้อมือ และมือชี้ คงรายละเอียดจากภาพจริง เป็นคนละตัวกับหนูนุ้ย",
     gesture: "ผายมือกว้างสลับรับคำ อีกมือพักข้างลำตัว",
-    source: "https://parliamentwatch.wevis.info/politicians/4cc8dfaf-e5ce-41f4-94d3-53bf858308b4",
-    sourceLabel: "ภาพบุคคลอ้างอิง · WeVis ↗",
-    ...ANUTIN_ART,
+    source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
+    sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
+    ...USER_PUPPETS.anutin,
   },
   {
     id: "nunui",
@@ -616,6 +615,7 @@ export function sceneSvg(
   prefix = "character",
 ): string {
   let n = 0;
+  const images = new Map<string,NonNullable<Graphic["image"]>>();
   const walk = (node: SceneNode): string => {
     const id = `${prefix}-${n++}`;
     const transform = `translate(${node.x ?? 0} ${node.y ?? 0}) rotate(${((node.rotation ?? 0) * 180) / Math.PI}) scale(${node.scaleX ?? 1} 1)`;
@@ -623,13 +623,20 @@ export function sceneSvg(
     if (node.graphic) {
       const g = node.graphic;
       const paint = `${g.fill ? ` fill="${g.fill}"` : ""}${g.stroke ? ` stroke="${g.stroke}" stroke-width="${g.strokeWidth ?? 1}" stroke-linecap="round" stroke-linejoin="round"` : ""}`;
-      graphic = g.holes
+      if(g.image) {
+        const imageId=`${prefix}-image-${g.image.src.split("/").pop()!.replace(/\W/g,"-")}`;
+        if(!images.has(imageId))images.set(imageId,g.image);
+        const mask=g.exclude?.length?`<mask id="${id}-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="2000" height="2000"><path d="${g.path}" fill="white"/>${g.exclude.map(path=>`<path d="${path}" fill="black"/>`).join("")}</mask>`:"";
+        graphic=`<defs><clipPath id="${id}"><path d="${g.path} ${g.holes??""}" clip-rule="evenodd"/></clipPath>${mask}</defs><g clip-path="url(#${id})"${mask?` mask="url(#${id}-mask)"`:""}><use href="#${imageId}" transform="matrix(${g.image.matrix.join(" ")})"/></g>`;
+      } else graphic = g.holes
         ? `<defs><clipPath id="${id}"><path d="${g.path}"/></clipPath></defs><path d="${g.path} ${g.holes}" fill-rule="evenodd" clip-path="url(#${id})"${paint}/>`
         : `<path d="${g.path}"${paint}/>`;
     }
     return `<g transform="${transform}">${graphic}${(node.children ?? []).map(walk).join("")}</g>`;
   };
-  return `<g fill="${ink}">${nodes.map(walk).join("")}</g>`;
+  const body=nodes.map(walk).join("");
+  const definitions=[...images.entries()].map(([id,image])=>`<image id="${id}" href="${image.src}" width="${image.width}" height="${image.height}"/>`).join("");
+  return `${definitions?`<defs>${definitions}</defs>`:""}<g fill="${ink}">${body}</g>`;
 }
 export function characterSvg(
   character: CharacterDefinition,

@@ -5,6 +5,12 @@ import {getCharacter} from '/src/characters.ts';
 const canvas=document.getElementById('stage'),renderer=new StageRenderer(canvas),settings=defaultSettings();
 const actors=[{key:'left',character:'theng',pose:{...restPose(),tilt:.18},placement:{x:.3,baseline:740,scale:1.3,lean:0}},{key:'right',character:'prawit',pose:{...restPose(),facing:-1,tilt:-.13},placement:{x:.7,baseline:740,scale:1.3,lean:0}}];
 renderer.drawActors(actors,settings);
+await Promise.all(actors.map(async a=>{
+ const src=getCharacter(a.character).body.image?.src;
+ if(src){const image=new Image();image.src=src;await image.decode();}
+}));
+await new Promise(requestAnimationFrame);
+renderer.drawActors(actors,settings);
 const rect=canvas.getBoundingClientRect(),scale=Math.min(rect.width/1280,rect.height/720);
 const offset={x:rect.left+(rect.width-1280*scale)/2,y:rect.top+(rect.height-720*scale)/2};
 const checks=[];
