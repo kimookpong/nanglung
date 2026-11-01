@@ -55,7 +55,7 @@ describe("persistent stage cast",()=>{
     const cast=initialCast(defaultSettings());
     for(let i=0;i<30;i++)addMember(cast,"prawit",i%2?"Left":"Right",`copy-${i}`);
     expect(cast.members).toHaveLength(MAX_CAST);
-    for(const m of cast.members){const p=placement(cast,m);expect(p.x).toBeGreaterThanOrEqual(.12);expect(p.x).toBeLessThanOrEqual(.88);expect(p.scale).toBeGreaterThan(1);}
+    for(const m of cast.members){const p=placement(cast,m);expect(p.x).toBeGreaterThanOrEqual(.12);expect(p.x).toBeLessThanOrEqual(.88);expect(p.scale).toBeGreaterThan(0);expect(p.scale).toBeLessThan(1);expect(p.baseline).toBeLessThan(720);}
     expect(new Set(cast.members.filter(m=>m.side==="Left").map(m=>placement(cast,m).x)).size).toBe(6);
   });
 });

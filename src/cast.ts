@@ -70,7 +70,9 @@ export function removeMember(cast:CastState,id:string):boolean {
 }
 export function placement(cast:CastState,member:CastMember) {
   const group=cast.members.filter(m=>m.side===member.side),index=group.indexOf(member),count=group.length;
-  const inner=member.side==="Left"?.39:.61,outer=member.side==="Left"?.12:.88;
+  const inner=member.side==="Left"?.42:.58,outer=member.side==="Left"?.12:.88;
   const x=count===1?(member.side==="Left"?.32:.68):outer+(inner-outer)*index/(count-1);
-  return {x,baseline:count>3?746:765,scale:count>3?1.24:1.46,lean:(member.side==="Left"?1:-1)*(count>1?(index===0?.08:-.025):.025)};
+  // Reserve a 280-unit silhouette per slot so crowded banks shrink with spacing.
+  const scale=count===1?1.12:Math.min(1.02,Math.abs(inner-outer)*1280/((count-1)*280));
+  return {x,baseline:680,scale,lean:(member.side==="Left"?1:-1)*(count>1?(index===0?.04:-.015):.015)};
 }
