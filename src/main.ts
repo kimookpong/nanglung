@@ -89,9 +89,6 @@ const settingsDialog = el<HTMLDialogElement>("settings-dialog");
 const castDialog = el<HTMLDialogElement>("cast-dialog");
 const libraryDialog = el<HTMLDialogElement>("library-dialog");
 let libraryMode: "add" | "replace" = "add";
-let dockPage = 0,
-  dockSelection = "";
-const compactRoster = matchMedia("(max-width:760px),(max-height:400px)");
 let castPage = 0;
 let savedCast = JSON.stringify(cast);
 let castDirty = false;
@@ -370,21 +367,24 @@ for (const name of ["cast", "camera"] as const) {
   });
 }
 function renderDock() {
-  const pageSize = compactRoster.matches ? 2 : 4;
   const selected = cast.controls[settings.hand] ?? "";
-  if (selected !== dockSelection) {
-    const index = cast.members.findIndex((m) => m.id === selected);
-    if (index >= 0) dockPage = Math.floor(index / pageSize);
-    dockSelection = selected;
-  }
-  const pages = Math.max(1, Math.ceil(cast.members.length / pageSize));
-  dockPage = Math.min(dockPage, pages - 1);
-  const members = cast.members.slice(
-      dockPage * pageSize,
-      dockPage * pageSize + pageSize,
-    ),
+  const members = cast.members,
     roster = el("stage-roster");
+  const columns = members.length > 4 ? 3 : 2;
+  const compactColumns = members.length > 8 ? 4 : columns;
   roster.dataset.count = String(members.length);
+  roster.dataset.dense = String(members.length > 4);
+  roster.dataset.many = String(members.length > 6);
+  roster.style.setProperty("--roster-columns", String(columns));
+  roster.style.setProperty(
+    "--roster-rows",
+    String(Math.ceil(members.length / columns)),
+  );
+  roster.style.setProperty("--roster-compact-columns", String(compactColumns));
+  roster.style.setProperty(
+    "--roster-compact-rows",
+    String(Math.ceil(members.length / compactColumns)),
+  );
   roster.innerHTML = members
     .map((member) => {
       const character = getCharacter(member.character),
@@ -394,23 +394,7 @@ function renderDock() {
       return `<button class="stage-member ${selected === member.id ? "active" : ""}" data-dock-member="${member.id}" aria-label="เชิด${character.name} ตัวที่${cast.members.indexOf(member) + 1}" aria-pressed="${selected === member.id}">${characterPreview(member.character, `dock-${member.id}`)}<strong>${character.name}</strong><small>ฝั่ง${member.side === "Left" ? "ซ้าย" : "ขวา"}${hand ? ` · มือ${hand === "Left" ? "ซ้าย" : "ขวา"}` : ""}</small><span class="member-check">${icon("check")}</span></button>`;
     })
     .join("");
-  el("dock-page").textContent = `${dockPage + 1} / ${pages}`;
-  el<HTMLButtonElement>("dock-prev").disabled = dockPage === 0;
-  el<HTMLButtonElement>("dock-next").disabled = dockPage >= pages - 1;
-  el("dock-page").parentElement!.hidden = pages <= 1;
 }
-compactRoster.addEventListener("change", () => {
-  dockSelection = "";
-  renderDock();
-});
-el("dock-prev").addEventListener("click", () => {
-  dockPage--;
-  renderDock();
-});
-el("dock-next").addEventListener("click", () => {
-  dockPage++;
-  renderDock();
-});
 el("stage-roster").addEventListener("click", (event) => {
   const id = (event.target as HTMLElement).closest<HTMLElement>(
     "[data-dock-member]",
