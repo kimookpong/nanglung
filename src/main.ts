@@ -15,6 +15,7 @@ import { CameraTracker } from "./camera";
 import { StageRenderer, drawLandmarks, drawHands } from "./renderer";
 import { getCharacter, isCharacterId } from "./characters";
 import { demoPerformance } from "./performance";
+import { checkHandControl } from "./control-selection";
 import {
   HandEnsemble,
   activeHands,
@@ -188,6 +189,7 @@ function updateLabels() {
   demo = demos[settings.hand];
   settings.character = settings.characters[settings.hand];
   updateCharacter();
+  updateHandChecks();
   el<HTMLSelectElement>("hand-mode").value = settings.handMode;
   el("hand-choice-label").textContent = "ควบคุมด้วย";
   el("calibration-title").textContent =
@@ -239,9 +241,9 @@ function updateCharacter() {
   const character = getCharacter(settings.character);
   const hasActor = !!memberForHand(cast, settings.hand);
   el<HTMLButtonElement>("character-about").disabled = !hasActor;
-  el("character-name").textContent = !hasActor
-    ? "เลือกตัวบนเวที"
-    : `${settings.hand === "Left" ? "ซ้าย" : "ขวา"} · ${character.name}`;
+  el("character-about").title = hasActor
+    ? (character.fullName ?? character.name)
+    : "เลือกตัวบนเวที";
   el("accessory-control").hidden = !character.accessory;
   el("accessory-label").textContent =
     `แสดง${character.accessory?.name ?? "อุปกรณ์"}`;
@@ -671,6 +673,53 @@ function setPause(value: boolean) {
   el("stage-paused").hidden = !value;
   el("pause").innerHTML = icon(value ? "play" : "pause");
   el("pause").setAttribute("aria-label", value ? "เชิดต่อ" : "พักการเชิด");
+  updateHandChecks();
+}
+function updateHandChecks() {
+  for (const side of HAND_SIDES) {
+    const member = memberForHand(cast, side);
+    const name = member ? getCharacter(member.character).name : "เลือกตัว";
+    const input = el<HTMLInputElement>(`control-${side}`);
+    input.checked = !paused && activeHands(settings).includes(side) && !!member;
+    input.setAttribute(
+      "aria-label",
+      `เชิดมือ${side === "Left" ? "ซ้าย" : "ขวา"} · ${name}`,
+    );
+    el(`control-${side}-name`).textContent = name;
+    el(`control-${side}-label`).classList.toggle(
+      "focused",
+      settings.hand === side,
+    );
+  }
+}
+for (const side of HAND_SIDES) {
+  el(`control-${side}`).addEventListener("change", () => {
+    const result = checkHandControl(
+      cast,
+      settings,
+      side,
+      el<HTMLInputElement>(`control-${side}`).checked,
+      paused,
+    );
+    if (!result.accepted) {
+      updateHandChecks();
+      notify("เพิ่มตัวละครอีกหนึ่งตัว เพื่อเชิดสองมือพร้อมกัน");
+      return;
+    }
+    autoplay = false;
+    for (const [key, hand] of heldDemoKeys)
+      demos[hand].fingers[Number(key) - 1] = 0;
+    heldDemoKeys.clear();
+    ensemble.clear();
+    syncCastSettings();
+    for (const hand of HAND_SIDES) bindCastHand(hand);
+    setPause(result.paused);
+    save();
+    updateLabels();
+    syncDemoControls();
+    updateModeUI();
+    drawTrackingOverlay();
+  });
 }
 function syncDemoControls() {
   el<HTMLInputElement>("demo-x").value = String(demo.x * 100);
