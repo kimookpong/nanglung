@@ -394,8 +394,6 @@ el("stage-roster").addEventListener("change", (event) => {
     )
     ?.focus({ preventScroll: true });
 });
-const compactControls = matchMedia("(max-width:760px),(max-height:620px)");
-let fingersTouched = false;
 function showFingerControls(show: boolean) {
   el("finger-panel").hidden = !show;
   const button = el<HTMLButtonElement>("toggle-fingers");
@@ -403,13 +401,9 @@ function showFingerControls(show: boolean) {
   button.setAttribute("aria-expanded", String(show));
   button.setAttribute("aria-label", `${show ? "ซ่อน" : "แสดง"}สัญญาณนิ้ว`);
 }
-showFingerControls(!compactControls.matches);
+showFingerControls(false);
 el("toggle-fingers").addEventListener("click", () => {
-  fingersTouched = true;
   showFingerControls(el("finger-panel").hidden);
-});
-compactControls.addEventListener("change", () => {
-  if (!fingersTouched) showFingerControls(!compactControls.matches);
 });
 
 function bindCastHand(side: HandSide) {
