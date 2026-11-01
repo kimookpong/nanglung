@@ -2,15 +2,12 @@ import { FINGERS, type Settings } from "./core";
 import { icon, fingerNames, actionNames } from "./ui-assets";
 
 export function renderWorkspace(settings: Settings) {
-  return `<div class="workspace" data-panel="cast">
-  <header class="app-header">
-    <div class="brand"><img class="brand-logo" src="${import.meta.env.BASE_URL}branding/nanglung-logo-transparent.png" alt="หนังลุง"/><div class="brand-copy"><strong>สตูดิโอหนังตะลุง</strong><span>เรื่องเล่า เริ่มต้นที่ปลายนิ้ว</span></div></div>
-    <nav class="header-actions" aria-label="เมนูสตูดิโอ"><button id="guide-button" class="text-button" aria-label="วิธีใช้งาน" title="วิธีเชิด">${icon("help")}<span>วิธีเชิด</span></button><button id="settings-button" class="text-button" aria-label="ตั้งค่าสตูดิโอ" aria-haspopup="dialog">${icon("sliders")}<span>ตั้งค่า</span></button></nav>
-  </header>
+  return `<div class="workspace">
   <main class="studio-grid">
     <section class="stage-column" aria-label="เวทีและตัวควบคุม">
       <div class="stage-shell" id="stage-shell">
         <canvas id="stage" tabindex="0" aria-label="เวทีหนังตะลุง" aria-description="ลากตัวละครเพื่อจัดตำแหน่งและย้ายฝั่ง ซ้ายใช้มือซ้าย ขวาใช้มือขวา คลิกหรือลูกศรเพื่อเลือกตัว และกด Escape เพื่อยกเลิกการลาก"></canvas>
+        <aside id="stage-camera" class="stage-camera" aria-label="ภาพกล้องขณะเชิด" hidden><div class="camera-preview" id="camera-preview"><video id="camera-video" autoplay muted playsinline></video><canvas id="hand-overlay" width="640" height="480"></canvas><div class="camera-empty" id="camera-empty">${icon("camera")}<strong id="camera-empty-title">กล้องยังไม่เปิด</strong><span id="camera-empty-copy">หันฝ่ามือเข้ากล้อง ให้เห็นนิ้วครบ</span></div><span class="camera-label" id="camera-label">กล้อง</span><button id="toggle-overlay" class="overlay-toggle" aria-label="ซ่อนจุดมือ" title="แสดง / ซ่อนจุดมือ" hidden>จุดมือ</button></div></aside>
         <div class="stage-hint">${icon("pointer")} ลากเพื่อจัดตำแหน่ง · คลิกเพื่อเลือกเชิด</div>
         <div class="stage-paused" id="stage-paused" hidden><span>${icon("pause")} พักการเชิด</span></div>
         <button class="exit-stage" id="exit-stage">${icon("close")} ออกจากเวที</button>
@@ -25,11 +22,10 @@ export function renderWorkspace(settings: Settings) {
       </section>
     </section>
     <aside class="control-column" aria-label="แผงควบคุมการเชิด">
-      <div class="input-source"><span class="camera-source">${icon("camera")} เชิดด้วยกล้อง</span><select id="hand-mode" aria-label="จำนวนมือที่ควบคุม" title="หนึ่งมือต่อหนึ่งตัวละครที่เลือก"><option value="single">1 มือ</option><option value="dual">2 มือ</option></select></div>
-      <div class="control-tabs"><div role="tablist" aria-label="แผงสตูดิโอ"><button id="panel-cast-tab" role="tab" aria-selected="true" aria-controls="control-cast">ตัวละคร <span id="cast-count">2</span></button><button id="panel-camera-tab" role="tab" aria-selected="false" tabindex="-1" aria-controls="control-camera">กล้อง</button></div></div>
-      <section id="control-cast" class="control-view cast-view" role="tabpanel" aria-labelledby="panel-cast-tab"><p class="panel-hint">เลือกฝั่งเพื่อแสดง หรือคลิกภาพเพื่อเลือกเชิด</p><div id="stage-roster" class="stage-roster" aria-label="ตัวละครทั้งหมด"></div></section>
-      <section id="control-camera" class="control-view camera-view" role="tabpanel" aria-labelledby="panel-camera-tab" hidden><div class="camera-preview" id="camera-preview"><video id="camera-video" autoplay muted playsinline></video><canvas id="hand-overlay" width="640" height="480"></canvas><div class="camera-empty" id="camera-empty">${icon("camera")}<strong id="camera-empty-title">กล้องยังไม่เปิด</strong><span id="camera-empty-copy">หันฝ่ามือเข้ากล้อง ให้เห็นนิ้วครบ</span></div><span class="camera-label" id="camera-label">CAMERA OFF</span><button id="toggle-overlay" class="overlay-toggle" aria-label="ซ่อนจุดมือ" title="แสดง / ซ่อนจุดมือ" hidden>จุดมือ</button></div><button id="calibrate" class="calibrate-button" aria-label="ปรับเทียบมือที่เลือก">${icon("sliders")}<span>ปรับเทียบมือ<small id="calibration-status">ยังไม่ปรับเทียบ</small></span><span class="calibrate-arrow">↗</span></button><p class="camera-note">ภาพกล้องประมวลผลบนอุปกรณ์ของคุณ</p></section>
-      <div class="camera-actions control-footer"><button id="start-camera" class="primary-button">${icon("camera")} เปิดกล้องเพื่อเชิด</button><p id="control-footer-note">เปิดกล้อง แล้วปรับเทียบมือก่อนเริ่มเชิด</p></div>
+      <div class="sidebar-heading"><h1 id="cast-title">ตัวละคร <span id="cast-count">6</span></h1><nav aria-label="เมนูสตูดิโอ"><button id="guide-button" class="icon-button" aria-label="วิธีใช้งาน" title="วิธีเชิด">${icon("help")}</button><button id="settings-button" class="icon-button" aria-label="ตั้งค่าสตูดิโอ" title="ตั้งค่า" aria-haspopup="dialog">${icon("sliders")}</button></nav></div>
+      <div class="input-source"><label for="hand-mode">จำนวนมือ</label><select id="hand-mode" aria-label="จำนวนมือที่ควบคุม" title="หนึ่งมือต่อหนึ่งตัวละครที่เลือก"><option value="single">1 มือ</option><option value="dual">2 มือ</option></select></div>
+      <section id="control-cast" class="control-view cast-view" aria-labelledby="cast-title"><p class="panel-hint">คลิกเพื่อเชิด · เช็กฝั่งเพื่อแสดง</p><div id="stage-roster" class="stage-roster" aria-label="ตัวละครทั้งหมด"></div></section>
+      <div class="camera-actions control-footer"><button id="start-camera" class="primary-button">${icon("camera")} เปิดกล้อง</button><button id="calibrate" class="calibrate-button" aria-label="ปรับเทียบมือที่เลือก">${icon("sliders")}<span>ปรับเทียบมือ<small id="calibration-status">ยังไม่ปรับเทียบ</small></span><span class="calibrate-arrow">↗</span></button><p id="control-footer-note">เปิดกล้องเพื่อเริ่มเชิด</p></div>
     </aside>
   </main>
 </div>

@@ -1,0 +1,14 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Camera PiP integration — synthetic stream</title><div id="app"></div><script type="module">
+// Test-only camera feed: no physical camera or permission prompt is used.
+const source=document.createElement('canvas');source.width=640;source.height=480;
+const context=source.getContext('2d'),hand=new Image();hand.src='/tests/fixtures/hand.jpg';await hand.decode();
+function draw(){context.fillStyle='#536668';context.fillRect(0,0,640,480);const s=Math.min(640/hand.naturalWidth,480/hand.naturalHeight);context.drawImage(hand,(640-hand.naturalWidth*s)/2,(480-hand.naturalHeight*s)/2,hand.naturalWidth*s,hand.naturalHeight*s);}
+draw();const streams=[],timer=setInterval(()=>{draw();document.documentElement.dataset.testLiveTracks=String(streams.flatMap(s=>s.getTracks()).filter(t=>t.readyState==='live').length);},66);
+Object.defineProperty(navigator.mediaDevices,'getUserMedia',{configurable:true,value:async()=>{
+ if(new URLSearchParams(location.search).has('deny'))throw new DOMException('Synthetic denied camera','NotAllowedError');
+ const stream=source.captureStream(15);streams.push(stream);return stream;
+}});
+Object.defineProperty(navigator.mediaDevices,'enumerateDevices',{configurable:true,value:async()=>[{kind:'videoinput',deviceId:'test-camera',label:'ภาพทดสอบ',groupId:'test',toJSON(){return this;}}]});
+addEventListener('pagehide',()=>{clearInterval(timer);streams.forEach(s=>s.getTracks().forEach(t=>t.stop()));});
+await import('/src/main.ts');
+</script></html>

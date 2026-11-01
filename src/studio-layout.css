@@ -1,0 +1,119 @@
+/* A compact side desk and a camera preview that stays on the theatre screen. */
+.workspace .studio-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 212px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+.workspace .stage-column { min-height: 0; min-width: 0; }
+.workspace .stage-shell { flex: 1; height: 0; aspect-ratio: auto; }
+.workspace .control-column {
+  padding: 12px;
+  gap: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: 4px; flex: none; }
+.sidebar-heading h1 { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.sidebar-heading nav { display: flex; gap: 1px; }
+.sidebar-heading .icon-button { width: 28px; height: 30px; padding: 5px; color: #927b60; }
+.sidebar-heading .icon-button svg { width: 16px; height: 16px; }
+.workspace .input-source { height: 32px; justify-content: space-between; }
+.workspace .input-source > label { font-size: 10px; color: #927b60; }
+.workspace .input-source > select { width: 72px; height: 32px; font-size: 11px; }
+.workspace .cast-view { flex: 1; display: flex; flex-direction: column; gap: 7px; min-height: 0; }
+.workspace .panel-hint { flex: none; margin: 0; font-size: 9px; line-height: 1.4; color: #a18c73; }
+.workspace .stage-roster[data-count] {
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: repeat(var(--roster-columns, 2), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--roster-rows, 3), minmax(0, 1fr));
+  gap: 6px;
+}
+.workspace .stage-member { min-height: 0; border-radius: 10px; }
+.workspace .stage-member-select { padding: 6px 3px 4px; gap: 3px; }
+.workspace .stage-member strong { font-size: 10px; }
+.workspace .stage-side-options { padding: 3px 2px; gap: 2px; }
+.workspace .stage-side-options label { font-size: 8px; gap: 2px; }
+.workspace .stage-side-options input { width: 10px; height: 10px; flex: none; }
+.workspace .stage-roster[data-many="true"] .stage-member-select { display: flex; flex-direction: column; justify-content: center; padding: 2px; }
+.workspace .stage-roster[data-many="true"] .puppet-preview { display: none; }
+.workspace .stage-roster[data-many="true"] strong { align-self: center; font-size: 9px; }
+.workspace .control-footer { display: flex; flex-direction: column; gap: 7px; padding-top: 10px; }
+.workspace .control-footer > .primary-button { height: 36px; min-height: 0; padding: 0 8px; font-size: 11px; }
+.workspace .calibrate-button { padding: 7px 8px; gap: 7px; border-radius: 8px; }
+.workspace .calibrate-button > svg { width: 15px; height: 15px; }
+.workspace .calibrate-button > span { font-size: 10px; }
+.workspace .calibrate-button small { font-size: 8px; margin-top: 2px; }
+.workspace .control-footer > p { margin: 0; font-size: 8px; line-height: 1.3; }
+.stage-camera {
+  position: absolute;
+  z-index: 3;
+  width: 180px;
+  height: 135px;
+  right: 10px;
+  bottom: 10px;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px #0005;
+  pointer-events: auto;
+}
+.stage-camera .camera-preview { width: 100%; height: 100%; min-height: 0; max-height: none; border: 1px solid #e7d1ae80; border-radius: inherit; background: #2d2924; }
+.stage-camera .camera-preview video { filter: blur(1.2px); }
+.stage-camera .camera-preview canvas { cursor: default; touch-action: auto; }
+.stage-camera .camera-label { top: 6px; left: 6px; padding: 4px 6px; font: 8px/1.2 Thonburi,sans-serif; letter-spacing: 0; color: #fff2df; background: #211d19a8; border-radius: 5px; }
+.stage-camera .camera-label:before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 4px; border-radius: 50%; background: #a8c3a1; }
+.stage-camera .overlay-toggle { right: 5px; bottom: 5px; padding: 4px 5px; font-size: 8px; }
+.stage-camera .camera-empty { padding: 6px; gap: 3px; color: #d6c7b2; }
+.stage-camera .camera-empty > svg { width: 18px; height: 18px; }
+.stage-camera .camera-empty strong { font-size: 9px; }
+.stage-camera .camera-empty > span { font-size: 8px; line-height: 1.3; }
+.toast { pointer-events: none; }
+@media (max-width: 1050px) { .workspace .studio-grid { grid-template-columns: minmax(0, 1fr) 198px; gap: 10px; padding: 10px; } .workspace .control-column { padding: 10px; gap: 8px; } }
+@media (max-width: 760px) and (orientation: landscape), (max-height: 400px) {
+  .workspace .studio-grid { grid-template-columns: minmax(0, 1fr) 168px; padding: 8px; gap: 8px; }
+  .workspace .stage-column { flex: 1; }
+  .workspace .stage-shell { flex: 1; height: 0; aspect-ratio: auto; }
+  .workspace .control-column { padding: 8px; gap: 5px; }
+  .sidebar-heading h1 { font-size: 11px; }
+  .sidebar-heading .icon-button { width: 24px; height: 26px; }
+  .workspace .input-source { height: 26px; }
+  .workspace .input-source > select { height: 26px; width: 60px; font-size: 10px; }
+  .workspace .panel-hint { font-size: 8px; }
+  .workspace .cast-view { gap: 4px; }
+  .workspace .stage-roster[data-count] { gap: 4px; }
+  .workspace .stage-roster[data-many="true"] { grid-template-columns: repeat(var(--roster-short-columns, 3), minmax(0, 1fr)); grid-template-rows: repeat(var(--roster-short-rows, 6), minmax(0, 1fr)); gap: 3px; }
+  .workspace .stage-roster[data-many="true"] .stage-member-select { padding: 0 !important; min-height: 9px; }
+  .workspace .stage-roster[data-many="true"] strong { font-size: 8px !important; line-height: 1; }
+  .workspace .stage-roster[data-many="true"] .stage-side-options { padding: 0; gap: 0; }
+  .workspace .stage-roster[data-many="true"] .stage-side-options label { font-size: 7px; line-height: 1.1; gap: 1px; }
+  .workspace .stage-roster[data-many="true"] .stage-side-options input { width: 8px; height: 8px; }
+  .workspace .control-footer { padding-top: 6px; gap: 4px; }
+  .workspace .control-footer > .primary-button { height: 28px; font-size: 10px; }
+  .workspace .calibrate-button { padding: 4px 6px; }
+  .workspace .calibrate-button small { font-size: 7px; }
+  .workspace .control-footer > p { display: none; }
+}
+@media (max-width: 760px) and (orientation: portrait) {
+  .workspace .studio-grid { display: flex; flex-direction: column; padding: 8px; gap: 8px; }
+  .workspace .stage-column { flex: none; }
+  .workspace .stage-shell { flex: none; height: auto; aspect-ratio: 16 / 9; }
+  .workspace .control-column { flex: 1; padding: 10px; gap: 7px; }
+  .sidebar-heading .icon-button { height: 26px; }
+  .workspace .input-source { height: 28px; }
+  .workspace .input-source > select { height: 28px; width: 72px; }
+  .workspace .stage-roster[data-count] { grid-template-columns: repeat(var(--roster-compact-columns, 3), minmax(0, 1fr)); grid-template-rows: repeat(var(--roster-compact-rows, 2), minmax(0, 1fr)); gap: 5px; }
+  .workspace .control-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 7px; align-items: stretch; }
+  .workspace .control-footer > .primary-button { height: 38px; }
+  .workspace .calibrate-button { padding: 5px 7px; }
+  .workspace .control-footer > p { display: none; }
+}
+@media (max-width: 760px) and (max-height: 620px) and (orientation: portrait) {
+  .workspace .control-column { padding: 8px; gap: 4px; }
+  .workspace .panel-hint { display: none; }
+  .workspace .stage-member-select { padding: 2px !important; }
+  .workspace .stage-side-options { padding: 1px 2px; }
+  .workspace .control-footer { padding-top: 5px; }
+  .workspace:has(.stage-roster[data-many="true"]) .stage-shell { aspect-ratio: 16 / 6; }
+  .workspace:has(.stage-roster[data-crowded="true"]) .stage-shell { aspect-ratio: 16 / 4; }
+}

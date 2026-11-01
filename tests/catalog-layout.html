@@ -1,5 +1,6 @@
 <!doctype html><html lang="th"><meta charset="utf-8"><title>Legacy catalog layout fixture</title><div id="app"></div><script type="module">
 import '/src/style.css';
+import '/src/studio-layout.css';
 import {defaultSettings} from '/src/core.ts';
 import {initialCast,addMember,placement} from '/src/cast.ts';
 import {catalogEntries} from '/src/catalog.ts';
@@ -11,7 +12,7 @@ const settings=defaultSettings(),cast=initialCast(settings);cast.members=[];cast
 for(let i=0;i<12;i++)addMember(cast,'theng',i%2?'Right':'Left','legacy-'+i);
 const entries=catalogEntries(cast);document.getElementById('app').innerHTML=renderStudio(settings);
 const roster=document.getElementById('stage-roster');Object.assign(roster.dataset,{count:String(entries.length),dense:'true',many:'true',crowded:'true'});
-for(const [name,value] of Object.entries({'--roster-columns':4,'--roster-rows':Math.ceil(entries.length/4),'--roster-compact-columns':4,'--roster-compact-rows':Math.ceil(entries.length/4)}))roster.style.setProperty(name,String(value));
+for(const [name,value] of Object.entries({'--roster-columns':2,'--roster-rows':Math.ceil(entries.length/2),'--roster-compact-columns':4,'--roster-compact-rows':Math.ceil(entries.length/4),'--roster-short-columns':3,'--roster-short-rows':Math.ceil(entries.length/3)}))roster.style.setProperty(name,String(value));
 roster.innerHTML=renderCatalog(entries,cast,settings);document.getElementById('cast-count').textContent=String(entries.length);
 const renderer=new StageRenderer(document.getElementById('stage'));renderer.drawActors(cast.members.map(member=>({key:member.id,character:member.character,pose:member.pose,placement:placement(cast,member)})),settings);
 </script></html>

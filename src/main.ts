@@ -1,4 +1,6 @@
 import "./style.css";
+import "./studio-layout.css";
+import { cameraPreviewBox } from "./camera-preview";
 import {
   FINGERS,
   averageSignals,
@@ -194,10 +196,7 @@ function updateLabels() {
   el<HTMLInputElement>("motion").value = String(settings.motion * 100);
   el("motion-value").textContent = `${settings.motion.toFixed(1)}×`;
   el<HTMLInputElement>("rods").checked = settings.rods;
-  el("calibration-status").textContent = settings.profiles[settings.hand]
-    .calibrated
-    ? "ปรับเทียบแล้ว"
-    : "ยังไม่ปรับเทียบ";
+  el("calibration-status").textContent = `มือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"} · ${settings.profiles[settings.hand].calibrated ? "ปรับเทียบแล้ว" : "ยังไม่ปรับเทียบ"}`;
   document.querySelectorAll<HTMLButtonElement>("[data-theme]").forEach((b) => {
     b.classList.toggle("active", b.dataset.theme === settings.theme);
     b.setAttribute("aria-pressed", String(b.dataset.theme === settings.theme));
@@ -235,46 +234,18 @@ function updateCharacter() {
   download.href = `${import.meta.env.BASE_URL}characters/${character.id}.svg${character.body.image ? "?art=user-png-20261031" : ""}`;
   download.download = `nanglung-${character.id}.svg`;
 }
-function setControlPanel(panel: "cast" | "camera", focus = false) {
-  document.querySelector<HTMLElement>(".workspace")!.dataset.panel = panel;
-  for (const name of ["cast", "camera"] as const) {
-    const selected = name === panel,
-      tab = el<HTMLButtonElement>(`panel-${name}-tab`);
-    tab.setAttribute("aria-selected", String(selected));
-    tab.tabIndex = selected ? 0 : -1;
-    el(`control-${name}`).hidden = !selected;
-    if (selected && focus) tab.focus();
-  }
-}
-for (const name of ["cast", "camera"] as const) {
-  const tab = el<HTMLButtonElement>(`panel-${name}-tab`);
-  tab.addEventListener("click", () => {
-    setControlPanel(name);
-  });
-  tab.addEventListener("keydown", (event) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    const next =
-      event.key === "Home"
-        ? "cast"
-        : event.key === "End"
-          ? "camera"
-          : name === "cast"
-            ? "camera"
-            : "cast";
-    setControlPanel(next, true);
-  });
-}
 function renderDock() {
   const entries = catalogEntries(cast),
     roster = el("stage-roster");
-  const columns = entries.length > 12 ? 4 : entries.length > 4 ? 3 : 2;
-  const compactColumns = entries.length > 8 ? 4 : columns;
+  const columns = 2;
+  const compactColumns = entries.length > 6 ? 4 : 3;
   roster.dataset.count = String(entries.length);
   roster.dataset.dense = String(entries.length > 4);
-  roster.dataset.many = String(entries.length > 12);
+  roster.dataset.many = String(entries.length > 6);
   roster.dataset.crowded = String(entries.length > 12);
   roster.style.setProperty("--roster-columns", String(columns));
+  roster.style.setProperty("--roster-short-columns", String(entries.length>6?3:2));
+  roster.style.setProperty("--roster-short-rows", String(Math.ceil(entries.length/(entries.length>6?3:2))));
   roster.style.setProperty(
     "--roster-rows",
     String(Math.ceil(entries.length / columns)),
@@ -406,6 +377,12 @@ function selectActor(id: string) {
   drawTrackingOverlay();
 }
 const stageCanvas=el<HTMLCanvasElement>("stage");
+function positionStageCamera() {
+  const rect=stageCanvas.getBoundingClientRect(),box=cameraPreviewBox(rect.width,rect.height),preview=el("stage-camera");
+  preview.style.width=`${box.width}px`;preview.style.height=`${box.height}px`;
+  preview.style.right=`${box.right}px`;preview.style.bottom=`${box.bottom}px`;
+}
+new ResizeObserver(positionStageCamera).observe(stageCanvas);
 stageCanvas.addEventListener("pointerdown", event=>{
   if(event.button!==0||!event.isPrimary||stageDrag)return;
   const start=stagePoint(event.clientX,event.clientY,stageCanvas.getBoundingClientRect());
@@ -474,21 +451,23 @@ el("accessories").addEventListener("change", () => {
   save();
 });
 function updateCameraUI() {
+  el("stage-camera").hidden = !cameraOn && !cameraLoading;
+  positionStageCamera();
   el("camera-empty").hidden = cameraOn;
   video.hidden = !cameraOn;
   el("toggle-overlay").hidden = !cameraOn;
   el("camera-label").textContent = cameraLoading
-    ? "LOADING MODEL"
+    ? "กำลังเปิดกล้อง"
     : cameraOn
-      ? "LOCAL CAMERA"
-      : "CAMERA OFF";
+      ? "กล้อง"
+      : "กล้องปิด";
   const start = el<HTMLButtonElement>("start-camera");
   start.disabled = cameraLoading;
   start.innerHTML = cameraLoading
-    ? '<span class="spinner"></span> กำลังเตรียมกล้อง…'
+    ? '<span class="spinner"></span> กำลังเปิด…'
     : cameraOn
       ? `${icon("camera")} ปิดกล้อง`
-      : `${icon("camera")} เปิดกล้องเพื่อเชิด`;
+      : `${icon("camera")} เปิดกล้อง`;
   el("camera-empty-title").textContent = cameraLoading
     ? "กำลังเตรียมกล้อง"
     : "กล้องยังไม่เปิด";
@@ -497,8 +476,8 @@ function updateCameraUI() {
     : "หันฝ่ามือเข้ากล้อง ให้เห็นนิ้วครบ";
   el<HTMLButtonElement>("calibrate").disabled = !cameraOn || cameraLoading;
   el("control-footer-note").textContent = cameraOn
-    ? "หันฝ่ามือเข้ากล้อง แล้วเลือกตัวละครที่ต้องการ"
-    : "เปิดกล้อง แล้วปรับเทียบมือก่อนเริ่มเชิด";
+    ? "ประมวลผลภาพบนเครื่อง"
+    : "เปิดกล้องเพื่อเริ่มเชิด";
 }
 function setPause(value: boolean) {
   paused = value;
@@ -614,7 +593,6 @@ async function enumerateCameras() {
   }
 }
 async function startCamera() {
-  setControlPanel("camera");
   if (cameraLoading) return;
   const token = ++cameraToken;
   cameraLoading = true;
