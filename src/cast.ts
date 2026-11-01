@@ -70,9 +70,9 @@ export function removeMember(cast:CastState,id:string):boolean {
 }
 export function placement(cast:CastState,member:CastMember) {
   const group=cast.members.filter(m=>m.side===member.side),index=group.indexOf(member),count=group.length;
-  const inner=member.side==="Left"?.42:.58,outer=member.side==="Left"?.12:.88;
+  const inner=member.side==="Left"?.40:.60,span=Math.min(.24,.12*(count-1));
+  const outer=inner+(member.side==="Left"?-span:span);
   const x=count===1?(member.side==="Left"?.32:.68):outer+(inner-outer)*index/(count-1);
-  // Reserve a 280-unit silhouette per slot so crowded banks shrink with spacing.
-  const scale=count===1?1.12:Math.min(1.02,Math.abs(inner-outer)*1280/((count-1)*280));
-  return {x,baseline:680,scale,lean:(member.side==="Left"?1:-1)*(count>1?(index===0?.04:-.015):.015)};
+  // Keep the reference actor's size; additional cast members share a compact bank.
+  return {x,baseline:680,scale:1.02,lean:(member.side==="Left"?1:-1)*(count>1?(index===0?.04:-.015):.015)};
 }
