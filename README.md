@@ -172,9 +172,7 @@ src/vision-worker.ts  MediaPipe และการเลือก GPU/CPU
 src/renderer.ts       ตัวหนังแยกชิ้น ฉาก และจุดมือ
 src/characters.ts     ข้อมูล/รูปเวกเตอร์เก้าตัว ข้อต่อ ปาก และอุปกรณ์
 src/theng-reference.ts รูปเท่งตามภาพผู้ใช้ สี ลายผ้า และรูปแขนแยกชิ้น
-src/prayut-art.ts      รูปไอยุทธ์และข้อต่อจากแบบประยุทธ์
-src/thaksin-art.ts     รูปแม้วจากภาพผู้ใช้และหมุดข้อต่อ
-src/contemporary-art.ts แบบวิตรและหนู
+src/user-puppets.ts    แยกชิ้น PNG ของไอยุทธ์ แม้ว วิตร หนู และเอกสำหรับเชิด
 src/leather-style.ts   ลายเถาใบฉลุและชุดหนังร่วมสำหรับสี่ตัวร่วมสมัย
 src/performance.ts    ชุดท่าตัวอย่างสำหรับทดสอบงานตัวหนัง ไม่รวมในแอปจริง
 src/style.css         หน้าสตูดิโอและการรองรับขนาดจอ
