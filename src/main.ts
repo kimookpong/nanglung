@@ -1255,22 +1255,6 @@ function frame(now: number) {
           (autoplay ? value : demo.fingers[i]) * 100,
         );
     });
-    const tracked = activeHands(settings).filter(
-      (side) => ensemble.sessions[side].controller.state === "tracking",
-    );
-    const stateText = paused
-      ? "พักการเชิด"
-      : mode === "demo"
-        ? `${autoplay ? "กำลังแสดงตัวอย่าง" : "โหมดทดลอง"}${settings.handMode === "dual" ? " · 2 มือ" : ""}`
-        : cameraLoading
-          ? "กำลังเตรียมกล้อง"
-          : !cameraOn
-            ? "กล้องปิดอยู่"
-            : settings.handMode === "dual"
-              ? `พบมือ ${tracked.length}/2 · ซ้าย ${tracked.includes("Left") ? "✓" : "–"} ขวา ${tracked.includes("Right") ? "✓" : "–"}`
-              : tracked.length
-                ? "ตรวจพบมือ · กำลังเชิด"
-                : `รอมือ${settings.hand === "Right" ? "ขวา" : "ซ้าย"}`;
     el("stage").setAttribute(
       "aria-label",
       `เวที ${cast.members.length} ตัว · ` +
@@ -1282,12 +1266,6 @@ function frame(now: number) {
           )
           .join(" · ") +
         " · คลิกตัวละครเพื่อสลับควบคุม",
-    );
-    if (el("stage-state").textContent !== stateText)
-      el("stage-state").textContent = stateText;
-    el("stage-state").classList.toggle(
-      "is-live",
-      mode === "live" && tracked.length > 0 && !paused,
     );
     if (calibrationDialog.open) {
       const preview = el<HTMLCanvasElement>("calibration-video");

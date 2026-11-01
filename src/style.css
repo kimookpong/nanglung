@@ -209,53 +209,7 @@ input[type="range"]:disabled {
   min-width: 0;
   min-height: 0;
 }
-.stage-topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex: none;
-  height: 60px;
-  padding: 0 2px 14px;
-}
-.stage-title h1 {
-  font-size: 19px;
-  font-weight: 500;
-  color: #f3ebdf;
-  margin-top: 3px;
-}
-.state-badge {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid #c6a57525;
-  border-radius: 30px;
-  padding: 7px 11px;
-  color: #c6b395;
-  background: #af936010;
-  font-size: 10px;
-  white-space: nowrap;
-  max-width: 60%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.state-badge:before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #b29870;
-  flex: none;
-}
-.state-badge.is-live {
-  color: #afe0c2;
-  border-color: #74b18b50;
-  background: #2f765b22;
-}
-.state-badge.is-live:before {
-  background: #8de2ad;
-  box-shadow: 0 0 9px #8de2ad55;
-}
+
 .stage-shell {
   position: relative;
   flex: 1;
@@ -1696,9 +1650,7 @@ input[type="range"]:disabled {
   .app-header {
     padding: 0 35px;
   }
-  .stage-title h1 {
-    font-size: 21px;
-  }
+
   .stage-member .puppet-preview {
     max-height: 190px;
   }
@@ -1773,16 +1725,7 @@ input[type="range"]:disabled {
   .stage-column {
     flex: none;
   }
-  .stage-topline {
-    height: 46px;
-    padding-bottom: 10px;
-  }
-  .stage-title h1 {
-    font-size: 16px;
-  }
-  .stage-title .eyebrow {
-    font-size: 8px;
-  }
+
   .stage-shell {
     flex: none;
     aspect-ratio: 16/9;
@@ -1912,10 +1855,7 @@ input[type="range"]:disabled {
     bottom: 10px;
     left: 10px;
   }
-  .state-badge {
-    font-size: 9px;
-    padding: 6px 9px;
-  }
+
   .library-dialog {
     padding: 18px;
   }
@@ -1949,16 +1889,7 @@ input[type="range"]:disabled {
     padding: 12px;
     gap: 14px;
   }
-  .stage-topline {
-    height: 43px;
-    padding-bottom: 9px;
-  }
-  .stage-title h1 {
-    font-size: 16px;
-  }
-  .stage-title .eyebrow {
-    font-size: 8px;
-  }
+
   .control-column {
     gap: 10px;
     padding: 12px;
@@ -2024,28 +1955,7 @@ input[type="range"]:disabled {
     padding: 8px;
     gap: 9px;
   }
-  .stage-topline {
-    position: absolute;
-    top: 8px;
-    left: 9px;
-    right: 9px;
-    z-index: 2;
-    height: 23px;
-    padding: 0;
-    justify-content: flex-end;
-    pointer-events: none;
-  }
-  .stage-title {
-    display: none;
-  }
-  .state-badge {
-    font-size: 8px;
-    padding: 5px 8px;
-    background: #2a211bd9;
-    border-color: #dcc49f30;
-    color: #ead7b6;
-    max-width: 85%;
-  }
+
   .stage-toolbar {
     height: 41px;
     padding: 4px 9px;

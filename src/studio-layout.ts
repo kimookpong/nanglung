@@ -10,7 +10,6 @@ export function renderWorkspace(settings: Settings) {
   </header>
   <main class="studio-grid">
     <section class="stage-column" aria-label="เวทีและตัวควบคุม">
-      <div class="stage-topline"><div class="stage-title"><span class="eyebrow">YOUR SHADOW THEATRE</span><h1>โรงหนังของคุณ</h1></div><span id="stage-state" class="state-badge" role="status">โหมดทดลอง</span></div>
       <div class="stage-shell" id="stage-shell">
         <canvas id="stage" tabindex="0" aria-label="เวทีหนังตะลุง" aria-description="คลิกตัวละครเพื่อเลือกควบคุม หรือใช้ปุ่มลูกศรซ้ายขวาเพื่อสลับตัว"></canvas>
         <div class="stage-hint">${icon("pointer")} คลิกตัวหนังเพื่อเลือกเชิด</div>
