@@ -42,6 +42,14 @@
 .workspace .stage-roster[data-many="true"] strong { align-self: center; font-size: 9px; }
 .workspace .control-footer { display: flex; flex-direction: column; gap: 7px; padding-top: 10px; }
 .workspace .control-footer > .primary-button { height: 36px; min-height: 0; padding: 0 8px; font-size: 11px; }
+/* The start control is the one call to action: larger, bolder, gently pulsing until live. */
+.workspace .control-footer > .start-button { height: 50px; gap: 10px; font-size: 17px; font-weight: 700; letter-spacing: .01em; background: linear-gradient(180deg, #c45a3c, #9e3f27); box-shadow: 0 6px 16px #9d412c40, inset 0 1px 0 #ffffff2e; animation: start-pulse 2.4s ease-in-out infinite; }
+.workspace .control-footer > .start-button svg { width: 20px; height: 20px; fill: currentColor; }
+.workspace .control-footer > .start-button:hover:not(:disabled) { background: linear-gradient(180deg, #cf6445, #a8452c); }
+.workspace .control-footer > .start-button.is-live { animation: none; background: #30271f; box-shadow: none; font-size: 15px; }
+.workspace .control-footer > .start-button.is-live svg { fill: none; }
+@keyframes start-pulse { 0%, 100% { box-shadow: 0 6px 16px #9d412c40, 0 0 0 0 #c45a3c55; } 50% { box-shadow: 0 6px 16px #9d412c40, 0 0 0 7px #c45a3c00; } }
+@media (prefers-reduced-motion: reduce) { .workspace .control-footer > .start-button { animation: none; } }
 .workspace .calibrate-button { padding: 7px 8px; gap: 7px; border-radius: 8px; }
 .workspace .calibrate-button > svg { width: 15px; height: 15px; }
 .workspace .calibrate-button > span { font-size: 10px; }
@@ -90,6 +98,7 @@
   .workspace .stage-roster[data-many="true"] .stage-side-options input { width: 8px; height: 8px; }
   .workspace .control-footer { padding-top: 6px; gap: 4px; }
   .workspace .control-footer > .primary-button { height: 28px; font-size: 10px; }
+  .workspace .control-footer > .start-button { height: 34px; font-size: 13px; }
   .workspace .calibrate-button { padding: 4px 6px; }
   .workspace .calibrate-button small { font-size: 7px; }
   .workspace .control-footer > p { display: none; }
@@ -105,6 +114,7 @@
   .workspace .stage-roster[data-count] { grid-template-columns: repeat(var(--roster-compact-columns, 3), minmax(0, 1fr)); grid-template-rows: repeat(var(--roster-compact-rows, 2), minmax(0, 1fr)); gap: 5px; }
   .workspace .control-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 7px; align-items: stretch; }
   .workspace .control-footer > .primary-button { height: 38px; }
+  .workspace .control-footer > .start-button { height: 42px; font-size: 15px; }
   .workspace .calibrate-button { padding: 5px 7px; }
   .workspace .control-footer > p { display: none; }
 }

@@ -463,11 +463,13 @@ function updateCameraUI() {
       : "กล้องปิด";
   const start = el<HTMLButtonElement>("start-camera");
   start.disabled = cameraLoading;
+  // Starting a performance is the main action; the camera is how it happens.
+  start.classList.toggle("is-live", cameraOn);
   start.innerHTML = cameraLoading
-    ? '<span class="spinner"></span> กำลังเปิด…'
+    ? '<span class="spinner"></span> กำลังเปิดกล้อง…'
     : cameraOn
-      ? `${icon("camera")} ปิดกล้อง`
-      : `${icon("camera")} เปิดกล้อง`;
+      ? `${icon("pause")} หยุดเชิด`
+      : `${icon("play")} เริ่มเชิด`;
   el("camera-empty-title").textContent = cameraLoading
     ? "กำลังเตรียมกล้อง"
     : "กล้องยังไม่เปิด";
@@ -477,7 +479,7 @@ function updateCameraUI() {
   el<HTMLButtonElement>("calibrate").disabled = !cameraOn || cameraLoading;
   el("control-footer-note").textContent = cameraOn
     ? "ประมวลผลภาพบนเครื่อง"
-    : "เปิดกล้องเพื่อเริ่มเชิด";
+    : "กดเริ่มเชิด ระบบจะเปิดกล้องให้";
 }
 function setPause(value: boolean) {
   paused = value;
