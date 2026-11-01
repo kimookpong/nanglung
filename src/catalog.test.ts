@@ -58,7 +58,7 @@ describe("complete character catalog", () => {
       expect(hideCatalogMember(cast, member.id)).toBe(true);
     expect(cast.controls).toEqual({ Left: null, Right: null });
     expect(parseCast(JSON.parse(JSON.stringify(cast)), settings)).toEqual(cast);
-    expect(catalogEntries(cast)).toHaveLength(9);
+    expect(catalogEntries(cast)).toHaveLength(CHARACTER_IDS.length);
     expect(catalogEntries(cast).every((entry) => !entry.member)).toBe(true);
     expect(
       showCatalogCharacter(cast, "theng", "Right", "returning")?.side,
@@ -68,8 +68,8 @@ describe("complete character catalog", () => {
     const cast = initialCast(defaultSettings());
     addMember(cast, "theng", "Left", "catalog-anutin");
     const entries = catalogEntries(cast);
-    expect(entries).toHaveLength(10);
-    expect(new Set(entries.map((entry) => entry.key)).size).toBe(10);
+    expect(entries).toHaveLength(CHARACTER_IDS.length + 1);
+    expect(new Set(entries.map((entry) => entry.key)).size).toBe(CHARACTER_IDS.length + 1);
     expect(
       entries
         .filter((entry) => entry.member)

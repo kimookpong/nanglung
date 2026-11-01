@@ -43,11 +43,11 @@ describe("character library", () => {
     expect(svg).toContain('/characters/artwork/prayut.png');
   });
   it("keeps the named main cast first, original artwork and independent saved choices", () => {
-    expect(CHARACTERS.slice(0,5).map(c => c.id)).toEqual(MAIN_CAST_IDS);
-    expect(CHARACTERS.slice(0,5).map(c => c.name)).toEqual(["เท่ง", "ไอยุทธ์", "แม้ว", "วิตร", "หนู"]);
-    for (const c of CHARACTERS.slice(1,5)) {
+    expect(CHARACTERS.slice(0,6).map(c => c.id)).toEqual(MAIN_CAST_IDS);
+    expect(CHARACTERS.slice(0,6).map(c => c.name)).toEqual(["เท่ง", "ไอยุทธ์", "แม้ว", "วิตร", "หนู", "เอก"]);
+    for (const c of CHARACTERS.slice(1,6)) {
       expect(c.body.image?.src).toBe(`/characters/artwork/${c.id}.png`);
-      expect(c.body.exclude!.length).toBe(7);
+      expect(c.body.exclude!.length).toBe(c.id === "thanathorn" ? 8 : 7);
       expect(c.arms.right.art?.upper.image?.src).toBe(c.body.image?.src);
       const previous = defaultSettings();
       previous.profiles.Left.calibrated = true;

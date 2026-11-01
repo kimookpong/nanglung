@@ -1,0 +1,23 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>เอก — ตรวจภาพและข้อต่อ</title><style>body{margin:20px;background:#dec69d;color:#3e2e20;font:14px Thonburi,sans-serif}h1{font-size:22px}main{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}figure{margin:0;background:#bba98b;border-radius:12px;padding:12px}figure svg{display:block;width:100%;height:440px}figcaption{text-align:center}pre{white-space:pre-wrap}</style><h1>เอก · ธนาธร จึงรุ่งเรืองกิจ</h1><main id="poses"></main><pre id="result">กำลังตรวจ…</pre><script type="module">
+import {getCharacter,characterSvg,REST_RIG} from '/src/characters.ts';
+import {paintCharacter,StageRenderer} from '/src/renderer.ts';
+import {defaultSettings,restPose} from '/src/core.ts';
+const character=getCharacter('thanathorn'),poses=[REST_RIG,{mouth:.5,head:.275,rightArm:.5,leftArm:.5},{mouth:1,head:.55,rightArm:1,leftArm:1}];
+document.getElementById('poses').innerHTML=poses.map((pose,i)=>`<figure>${characterSvg(character,pose,'ek-'+i)}<figcaption>${['ท่าพัก','ครึ่งท่า','สุดท่า'][i]}</figcaption></figure>`).join('');
+const image=new Image();image.src=character.body.image.src;
+// Warm the real renderer's image cache before inspecting articulated source pixels.
+const warm=new StageRenderer(document.createElement('canvas'));warm.draw(restPose(),{...defaultSettings(),character:'thanathorn'});
+await image.decode();await new Promise(requestAnimationFrame);
+const original=document.createElement('canvas'),rendered=document.createElement('canvas');
+for(const canvas of [original,rendered]){canvas.width=1024;canvas.height=1536;}
+const o=original.getContext('2d'),c=rendered.getContext('2d');o.drawImage(image,0,0);
+c.translate(535,1030);c.scale(-1/.285,1/.285);paintCharacter(c,character,{...restPose(),...REST_RIG},'#222',false);
+const pixel=(ctx,x,y)=>Array.from(ctx.getImageData(x,y,1,1).data);
+const samples=[[400,50],[400,230],[600,610],[600,730],[900,899],[420,1435]];
+const checks=[
+{name:'white background and leg gap are transparent',pass:[[0,0],[900,300],[580,1200],[250,950]].every(([x,y])=>pixel(c,x,y)[3]<5)},
+{name:'hair, skin, orange shirt, white logo, watch and sole retain source colors',pass:samples.every(([x,y])=>pixel(c,x,y).every((v,i)=>Math.abs(v-pixel(o,x,y)[i])<8))},
+{name:'both arms, head and mouth animate',pass:poses.slice(1).every(p=>characterSvg(character,p)!==characterSvg(character,REST_RIG))}
+];
+document.getElementById('result').textContent=JSON.stringify({status:checks.every(c=>c.pass)?'PASS':'FAIL',checks,samples:samples.map(([x,y])=>({x,y,source:pixel(o,x,y),rendered:pixel(c,x,y)}))},null,2);
+</script></html>

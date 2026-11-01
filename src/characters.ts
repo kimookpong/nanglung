@@ -8,13 +8,14 @@ export const CHARACTER_IDS = [
   "thaksin",
   "prawit",
   "anutin",
+  "thanathorn",
   "nunui",
   "sikaew",
   "yodthong",
   "khwanmuang",
 ] as const;
 export type CharacterId = (typeof CHARACTER_IDS)[number];
-export const MAIN_CAST_IDS: readonly CharacterId[] = ["theng", "prayut", "thaksin", "prawit", "anutin"];
+export const MAIN_CAST_IDS: readonly CharacterId[] = ["theng", "prayut", "thaksin", "prawit", "anutin", "thanathorn"];
 export type XY = readonly [number, number];
 export interface Graphic {
   path: string;
@@ -154,7 +155,7 @@ function styleArms(
 }
 
 // Shared vector rig. Theng follows the reference supplied by the user;
-// Four contemporary caricatures use the supplied PNGs with articulated clip stencils.
+// Contemporary caricatures use the supplied PNGs with articulated clip stencils.
 export const CHARACTERS: readonly CharacterDefinition[] = [
   {
     id: "theng",
@@ -213,6 +214,18 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
     source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
     sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
     ...USER_PUPPETS.anutin,
+  },
+  {
+    id: "thanathorn",
+    name: "เอก",
+    fullName: "เอก · ธนาธร จึงรุ่งเรืองกิจ · ตัวละครล้อเลียน",
+    numeral: "๐๖",
+    subtitle: "เสื้อส้ม · ผมตั้ง · รองเท้าผ้าใบ",
+    traits: "เอก ตัวละครล้อเลียนธนาธร จึงรุ่งเรืองกิจ ใช้ภาพผู้ใช้: ผมตั้ง เสื้อโปโลสีส้มพร้อมโลโก้จากภาพ กางเกงดำ นาฬิกา และรองเท้าผ้าใบ คงรายละเอียดภาพและตัดพื้นขาวด้วยหน้ากากแสดงผล",
+    gesture: "ชี้ประกอบคำ ผายมือรับบทสนทนา และขยับศีรษะรับจังหวะ",
+    source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
+    sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
+    ...USER_PUPPETS.thanathorn,
   },
   {
     id: "nunui",
@@ -626,7 +639,7 @@ export function sceneSvg(
       if(g.image) {
         const imageId=`${prefix}-image-${g.image.src.split("/").pop()!.replace(/\W/g,"-")}`;
         if(!images.has(imageId))images.set(imageId,g.image);
-        const mask=g.exclude?.length?`<mask id="${id}-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="2000" height="2000"><path d="${g.path}" fill="white"/>${g.exclude.map(path=>`<path d="${path}" fill="black"/>`).join("")}</mask>`:"";
+        const mask=g.exclude?.length?`<mask id="${id}-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="2000" height="2000"><path d="${g.path}" fill="white"/>${g.exclude.map(path=>`<path d="${path}" fill="black" fill-rule="evenodd"/>`).join("")}</mask>`:"";
         graphic=`<defs><clipPath id="${id}"><path d="${g.path} ${g.holes??""}" clip-rule="evenodd"/></clipPath>${mask}</defs><g clip-path="url(#${id})"${mask?` mask="url(#${id}-mask)"`:""}><use href="#${imageId}" transform="matrix(${g.image.matrix.join(" ")})"/></g>`;
       } else graphic = g.holes
         ? `<defs><clipPath id="${id}"><path d="${g.path}"/></clipPath></defs><path d="${g.path} ${g.holes}" fill-rule="evenodd" clip-path="url(#${id})"${paint}/>`

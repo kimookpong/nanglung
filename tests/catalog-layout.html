@@ -11,7 +11,7 @@ const settings=defaultSettings(),cast=initialCast(settings);cast.members=[];cast
 for(let i=0;i<12;i++)addMember(cast,'theng',i%2?'Right':'Left','legacy-'+i);
 const entries=catalogEntries(cast);document.getElementById('app').innerHTML=renderStudio(settings);
 const roster=document.getElementById('stage-roster');Object.assign(roster.dataset,{count:String(entries.length),dense:'true',many:'true',crowded:'true'});
-for(const [name,value] of Object.entries({'--roster-columns':4,'--roster-rows':5,'--roster-compact-columns':4,'--roster-compact-rows':5}))roster.style.setProperty(name,String(value));
+for(const [name,value] of Object.entries({'--roster-columns':4,'--roster-rows':Math.ceil(entries.length/4),'--roster-compact-columns':4,'--roster-compact-rows':Math.ceil(entries.length/4)}))roster.style.setProperty(name,String(value));
 roster.innerHTML=renderCatalog(entries,cast,settings);document.getElementById('cast-count').textContent=String(entries.length);
 const renderer=new StageRenderer(document.getElementById('stage'));renderer.drawActors(cast.members.map(member=>({key:member.id,character:member.character,pose:member.pose,placement:placement(cast,member)})),settings);
 </script></html>

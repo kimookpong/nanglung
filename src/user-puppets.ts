@@ -1,11 +1,12 @@
 import type { CharacterDefinition, Graphic, XY } from "./characters";
+import { THANATHORN_BACKGROUND } from "./thanathorn-mask";
 
 // The user's PNGs are the actual artwork. Clip stencils separate their existing
 // pieces; one affine projection keeps the texture aligned across every joint.
 type Art=Pick<CharacterDefinition,"body"|"cloth"|"legs"|"head"|"arms"|"footY"|"viewBox"|"decorations">;
 type Projection={origin?:XY;angle?:number;side?:1|-1};
 type ArmSource={shoulder:XY;elbow:XY;wrist:XY;upper:string;lower:string;hand:string};
-type Source={id:string;head:string;jaw:string;headPivot:XY;jawPivot:XY;body:string;point:ArmSource;palm:ArmSource};
+type Source={id:string;head:string;jaw:string;headPivot:XY;jawPivot:XY;body:string;point:ArmSource;palm:ArmSource;background?:string};
 const SCALE=.285,ORIGIN:XY=[535,1030];
 function matrix(p:Projection={}) {
   const [ox,oy]=p.origin??ORIGIN,a=p.angle??0,s=p.side??-1;
@@ -23,10 +24,10 @@ function path(data:string,p:Projection={}) {
     return command+out.join(" ")+" ";
   }).trim();
 }
-function piece(id:string,outline:string,p:Projection={},exclude:string[]=[]):Graphic {
-  return {path:path(outline,p),image:{src:`/characters/artwork/${id}.png`,width:1024,height:1536,matrix:matrix(p)},exclude:exclude.map(e=>path(e,p))};
+function piece(id:string,outline:string,p:Projection={},exclude:string[]=[],background?:string):Graphic {
+  return {path:path(outline,p),image:{src:`/characters/artwork/${id}.png`,width:1024,height:1536,matrix:matrix(p)},exclude:[...exclude,...(background?[background]:[])].map(e=>path(e,p))};
 }
-function arm(id:string,source:ArmSource,side:1|-1,rest:number):CharacterDefinition["arms"]["right"] {
+function arm(id:string,source:ArmSource,side:1|-1,rest:number,background?:string):CharacterDefinition["arms"]["right"] {
   const {shoulder,elbow,wrist}=source;
   const a=Math.atan2(elbow[1]-shoulder[1],-side*(elbow[0]-shoulder[0]));
   const f=Math.atan2(wrist[1]-elbow[1],-side*(wrist[0]-elbow[0]));
@@ -35,15 +36,15 @@ function arm(id:string,source:ArmSource,side:1|-1,rest:number):CharacterDefiniti
   return {shoulder:point(...shoulder),side,upper:Math.hypot(elbow[0]-shoulder[0],elbow[1]-shoulder[1])*SCALE,
     lower:Math.hypot(wrist[0]-elbow[0],wrist[1]-elbow[1])*SCALE,width:12,hand:side===1?"point":"palm",
     shoulderAngles:[(a-rest*end)/(1-rest),end],elbowAngles:[(f-a-rest*elbowEnd)/(1-rest),elbowEnd],
-    art:{upper:piece(id,source.upper,project(shoulder,a)),lower:piece(id,source.lower,project(elbow,f)),hand:piece(id,source.hand,project(wrist,f))}};
+    art:{upper:piece(id,source.upper,project(shoulder,a),[],background),lower:piece(id,source.lower,project(elbow,f),[],background),hand:piece(id,source.hand,project(wrist,f),[],background)}};
 }
 function puppet(s:Source):Art {
   const exclusions=[s.head,s.point.upper,s.point.lower,s.point.hand,s.palm.upper,s.palm.lower,s.palm.hand];
   return {footY:143,viewBox:"-235 -310 470 500",
-    body:piece(s.id,s.body,{},exclusions),cloth:{path:"",fill:"none"},legs:{path:"",fill:"none"},decorations:[],
-    head:{anchor:point(...s.headPivot),graphic:piece(s.id,s.head,{origin:s.headPivot},[s.jaw]),eye:{path:""},
-      jawAnchor:point(...s.jawPivot,{origin:s.headPivot}),jaw:piece(s.id,s.jaw,{origin:s.jawPivot}),jawLimit:.23,headLimit:.12},
-    arms:{right:arm(s.id,s.point,1,.16),left:arm(s.id,s.palm,-1,.12)},
+    body:piece(s.id,s.body,{},exclusions,s.background),cloth:{path:"",fill:"none"},legs:{path:"",fill:"none"},decorations:[],
+    head:{anchor:point(...s.headPivot),graphic:piece(s.id,s.head,{origin:s.headPivot},[s.jaw],s.background),eye:{path:""},
+      jawAnchor:point(...s.jawPivot,{origin:s.headPivot}),jaw:piece(s.id,s.jaw,{origin:s.jawPivot},[],s.background),jawLimit:.23,headLimit:.12},
+    arms:{right:arm(s.id,s.point,1,.16,s.background),left:arm(s.id,s.palm,-1,.12,s.background)},
   };
 }
 
@@ -100,4 +101,19 @@ const anutin:Source={id:"anutin",headPivot:[533,461],jawPivot:[368,320],
     hand:"M905 956L952 940L958 981L978 1013L1007 1049L1011 1080L1000 1104L978 1092L983 1131L966 1148L944 1121L935 1150L914 1145L898 1104L879 1122L860 1103L877 1056L882 1009Z"},
 };
 
-export const USER_PUPPETS={prayut:puppet(prayut),thaksin:puppet(thaksin),prawit:puppet(prawit),anutin:puppet(anutin)};
+const thanathorn:Source={id:"thanathorn",background:THANATHORN_BACKGROUND,
+  headPivot:[520,540],jawPivot:[367,331],
+  head:"M205 0L710 0L710 365L601 438L597 456L520 558L443 499L431 453L225 455L214 390L226 321L208 274Z",
+  jaw:"M367 331Q350 349 289 350L265 347L244 365L243 403Q249 439 285 445L341 449L390 430L420 397L405 358Z",
+  body:"M430 465L462 484L520 555L599 435L650 449L681 468L695 530L706 626L711 701L700 742L727 792L719 829L759 908L779 999L780 1110L803 1177L830 1280L839 1351L873 1419L890 1470L885 1494L846 1518L765 1536L690 1536L637 1518L622 1480L626 1453L665 1421L697 1389L708 1367L702 1323L663 1246L622 1168L582 991L548 985L515 1109L524 1181L546 1275L540 1351L565 1406L568 1448L553 1474L504 1493L402 1497L305 1479L289 1451L287 1421L322 1401L374 1372L406 1341L424 1305L423 1249L402 1187L392 1140L395 1110L419 1034L450 965L491 866L493 834L477 818L471 794L482 764L470 733L446 684L422 646L418 581Z",
+  point:{shoulder:[383,532],elbow:[343,720],wrist:[204,627],
+    upper:"M375 490Q411 490 417 547L414 623L386 722L369 755L329 746L306 706L320 642L341 568L347 531Z",
+    lower:"M342 678Q380 676 385 716L379 750L352 774L320 773L280 752L219 710L173 664L187 609L230 628L292 675Z",
+    hand:"M187 601L222 623L207 664L174 650L130 639L87 608L80 561L44 510L42 475L64 465L113 489L170 509L196 549L206 583Z"},
+  palm:{shoulder:[709,496],elbow:[817,724],wrist:[902,915],
+    upper:"M697 446Q741 450 769 510L797 588L844 686L842 729L804 754L758 727L730 659L682 574L677 512Z",
+    lower:"M809 683Q850 678 868 738L887 823L931 926L885 958L854 902L821 824L784 754L783 718Z",
+    hand:"M879 907L930 894L939 948L970 982L1008 1027L1014 1070L994 1096L987 1114L956 1121L927 1113L915 1120L889 1112L884 1083L856 1078L855 1031L866 973Z"},
+};
+
+export const USER_PUPPETS={prayut:puppet(prayut),thaksin:puppet(thaksin),prawit:puppet(prawit),anutin:puppet(anutin),thanathorn:puppet(thanathorn)};

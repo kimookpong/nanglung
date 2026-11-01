@@ -13,14 +13,15 @@ const sources={
   thaksin:"0c03025b012a2ff0cd18ad395feaa2807baa9207e63df3806a72f044564dbb5e",
   prawit:"2b411c9edd9b1d0b312cd4606ccc7cb8b3fc970d9841245c882542012c008566",
   anutin:"2725897d173496ebd8b4f69bccd9dff77a5ae9560eb4e9e1c6f57d4be0d3bf2c",
+  thanathorn:"08b7861905dc8322f7fbe7ba83818d00b603a77bc1425bb3542f95ceb7071f51",
 };
 describe("supplied puppet artwork",()=>{
   for(const [id,hash] of Object.entries(sources)) {
-    it(`${id}: preserves the user's exact PNG bytes and transparent dimensions`,()=>{
+    it(`${id}: preserves the user's exact PNG bytes and dimensions`,()=>{
       const file=readFileSync(new URL(`../public/characters/artwork/${id}.png`,import.meta.url));
       expect(createHash("sha256").update(file).digest("hex")).toBe(hash);
       expect(file.readUInt32BE(16)).toBe(1024);expect(file.readUInt32BE(20)).toBe(1536);
-      expect(file[25]).toBe(6); // PNG RGBA: preserve the supplied alpha channel.
+      expect(file[25]).toBe(id === "thanathorn" ? 2 : 6); // Preserve RGB or RGBA exactly as supplied.
       const svg=readFileSync(new URL(`../public/characters/${id}.svg`,import.meta.url),"utf8");
       const embedded=svg.match(/href="data:image\/png;base64,([A-Za-z0-9+/=]+)"/);
       expect(embedded).not.toBeNull();

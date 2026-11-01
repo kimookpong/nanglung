@@ -257,7 +257,7 @@ function renderDock() {
   const compactColumns = entries.length > 8 ? 4 : columns;
   roster.dataset.count = String(entries.length);
   roster.dataset.dense = String(entries.length > 4);
-  roster.dataset.many = String(entries.length > 9);
+  roster.dataset.many = String(entries.length > 12);
   roster.dataset.crowded = String(entries.length > 12);
   roster.style.setProperty("--roster-columns", String(columns));
   roster.style.setProperty(
