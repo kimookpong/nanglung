@@ -14,16 +14,20 @@ import {
 import { CameraTracker } from "./camera";
 import { StageRenderer, drawLandmarks, drawHands } from "./renderer";
 import { getCharacter, isCharacterId } from "./characters";
+import {
+  catalogEntries,
+  showCatalogCharacter,
+  hideCatalogMember,
+} from "./catalog";
+import { renderCatalog } from "./catalog-ui";
 import { checkHandControl } from "./control-selection";
 import { HandEnsemble, activeHands, HAND_SIDES } from "./ensemble";
 import {
-  addMember,
   initialCast,
   memberForHand,
   moveMember,
   parseCast,
   placement,
-  removeMember,
   selectMember,
   MAX_CAST,
   type CastState,
@@ -61,8 +65,6 @@ for (const side of HAND_SIDES) {
   const member = memberForHand(cast, side);
   if (member) settings.characters[side] = member.character;
 }
-if (!memberForHand(cast, settings.hand))
-  settings.hand = cast.controls.Right ? "Right" : "Left";
 settings.character = settings.characters[settings.hand];
 document.querySelector<HTMLDivElement>("#app")!.innerHTML =
   renderStudio(settings);
@@ -81,10 +83,6 @@ const calibrationDialog = el<HTMLDialogElement>("calibration-dialog");
 const guideDialog = el<HTMLDialogElement>("guide-dialog");
 const characterDialog = el<HTMLDialogElement>("character-dialog");
 const settingsDialog = el<HTMLDialogElement>("settings-dialog");
-const castDialog = el<HTMLDialogElement>("cast-dialog");
-const libraryDialog = el<HTMLDialogElement>("library-dialog");
-let libraryMode: "add" | "replace" = "add";
-let castPage = 0;
 let savedCast = JSON.stringify(cast);
 let castDirty = false;
 el("settings-button").addEventListener("click", () =>
@@ -161,17 +159,10 @@ function updateLabels() {
   updateCharacter();
   updateHandChecks();
   el<HTMLSelectElement>("hand-mode").value = settings.handMode;
-  el("hand-choice-label").textContent = "ควบคุมด้วย";
   el("calibration-title").textContent =
     `ปรับเทียบมือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
   el("finger-description").textContent =
     `สัญญาณมือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
-  for (const side of HAND_SIDES) {
-    el<HTMLSelectElement>("hand-side").querySelector<HTMLOptionElement>(
-      `option[value="${side}"]`,
-    )!.textContent =
-      `${side === "Left" ? "ซ้าย" : "ขวา"} · ${memberForHand(cast, side) ? getCharacter(settings.characters[side]).name : "ยังไม่เลือก"}`;
-  }
   settings.assignments.forEach((action, i) => {
     el(`action-label-${i}`).textContent = actionNames[action];
     el<HTMLSelectElement>(`assign-${i}`).value = action;
@@ -182,7 +173,6 @@ function updateLabels() {
   });
   el<HTMLInputElement>("mirror").checked = settings.mirror;
   video.style.transform = settings.mirror ? "scaleX(-1)" : "";
-  el<HTMLSelectElement>("hand-side").value = settings.hand;
   el<HTMLInputElement>("smoothing").value = String(settings.smoothing * 100);
   el("smoothing-value").textContent =
     `${Math.round(settings.smoothing * 100)}%`;
@@ -197,15 +187,7 @@ function updateLabels() {
     b.classList.toggle("active", b.dataset.theme === settings.theme);
     b.setAttribute("aria-pressed", String(b.dataset.theme === settings.theme));
   });
-  el("cast-count").textContent = String(cast.members.length);
-  el<HTMLButtonElement>("add-character").disabled =
-    cast.members.length >= MAX_CAST;
-  el<HTMLButtonElement>("change-character").disabled = !memberForHand(
-    cast,
-    settings.hand,
-  );
   renderDock();
-  if (castDialog.open) renderCast();
 }
 function updateCharacter() {
   const character = getCharacter(settings.character);
@@ -220,7 +202,9 @@ function updateCharacter() {
   el<HTMLInputElement>("accessories").checked = settings.accessories;
   el<HTMLCanvasElement>("stage").setAttribute(
     "aria-label",
-    `เวทีหนังตะลุง — ${character.name} ขยับตามมือจากกล้อง`,
+    hasActor
+      ? `เวทีหนังตะลุง — ${character.name} ขยับตามมือจากกล้อง`
+      : "เวทีหนังตะลุง — เลือกตัวละครเพื่อเชิดด้วยมือที่เลือก",
   );
   el("about-character-name").textContent = character.fullName ?? character.name;
   el("about-character-traits").textContent = character.traits;
@@ -235,33 +219,6 @@ function updateCharacter() {
   const download = el<HTMLAnchorElement>("character-download");
   download.href = `${import.meta.env.BASE_URL}characters/${character.id}.svg${character.body.image ? "?art=user-png-20261031" : ""}`;
   download.download = `nanglung-${character.id}.svg`;
-  document
-    .querySelectorAll<HTMLButtonElement>("[data-character]")
-    .forEach((button) => {
-      const active =
-        libraryMode === "replace" &&
-        hasActor &&
-        button.dataset.character === character.id;
-      button.classList.toggle("active", active);
-      button.setAttribute("aria-pressed", String(active));
-    });
-}
-function chooseCharacter(id: string | undefined) {
-  if (!isCharacterId(id)) return;
-  const member = memberForHand(cast, settings.hand);
-  if (!member) {
-    openCast();
-    return;
-  }
-  if (id === settings.character) return;
-  member.character = id;
-  settings.character = id;
-  settings.characters[settings.hand] = id;
-
-  // A held pinky must release before flipping the replacement puppet.
-  active.controller.gesture.reset();
-  save();
-  updateLabels();
 }
 function setControlPanel(panel: "cast" | "camera", focus = false) {
   document.querySelector<HTMLElement>(".workspace")!.dataset.panel = panel;
@@ -274,50 +231,6 @@ function setControlPanel(panel: "cast" | "camera", focus = false) {
     if (selected && focus) tab.focus();
   }
 }
-function openLibrary(kind: "add" | "replace") {
-  if (kind === "replace" && !memberForHand(cast, settings.hand)) return;
-  libraryMode = kind;
-  el("library-title").textContent =
-    kind === "add" ? "เพิ่มตัวละครบนเวที" : "เปลี่ยนแบบตัวละคร";
-  el("library-copy").textContent =
-    kind === "add"
-      ? "เลือกตัวหนังที่อยากให้ร่วมเล่าเรื่อง"
-      : `กำลังเปลี่ยนแบบของ ${getCharacter(settings.character).name}`;
-  el("library-side-row").hidden = kind !== "add";
-  el<HTMLSelectElement>("library-side").value =
-    memberForHand(cast, settings.hand)?.side ?? "Left";
-  el("library-footnote").textContent =
-    kind === "add"
-      ? `เพิ่มได้สูงสุด ${MAX_CAST} ตัว · เพิ่มแบบเดียวกันหลายตัวได้`
-      : "เลือกแบบที่ต้องการใช้กับตัวละครนี้";
-  updateCharacter();
-  libraryDialog.showModal();
-}
-el("add-character").addEventListener("click", () => openLibrary("add"));
-el("change-character").addEventListener("click", () => openLibrary("replace"));
-el("close-library").addEventListener("click", () => libraryDialog.close());
-document
-  .querySelectorAll<HTMLButtonElement>("[data-character]")
-  .forEach((button) =>
-    button.addEventListener("click", () => {
-      const id = button.dataset.character;
-      if (!isCharacterId(id)) return;
-      if (libraryMode === "add") {
-        const side = el<HTMLSelectElement>("library-side").value as HandSide;
-        const member = addMember(cast, id, side, crypto.randomUUID());
-        if (!member) {
-          notify(`เวทีรองรับได้สูงสุด ${MAX_CAST} ตัว`);
-          return;
-        }
-        selectActor(member.id);
-        notify(
-          `เพิ่ม${getCharacter(id).name}ฝั่ง${side === "Left" ? "ซ้าย" : "ขวา"}แล้ว`,
-        );
-      } else chooseCharacter(id);
-      libraryDialog.close();
-      setControlPanel("cast");
-    }),
-  );
 for (const name of ["cast", "camera"] as const) {
   const tab = el<HTMLButtonElement>(`panel-${name}-tab`);
   tab.addEventListener("click", () => {
@@ -338,59 +251,98 @@ for (const name of ["cast", "camera"] as const) {
   });
 }
 function renderDock() {
-  const selected = cast.controls[settings.hand] ?? "";
-  const members = cast.members,
+  const entries = catalogEntries(cast),
     roster = el("stage-roster");
-  const columns = members.length > 4 ? 3 : 2;
-  const compactColumns = members.length > 8 ? 4 : columns;
-  roster.dataset.count = String(members.length);
-  roster.dataset.dense = String(members.length > 4);
-  roster.dataset.many = String(members.length > 6);
+  const columns = entries.length > 12 ? 4 : entries.length > 4 ? 3 : 2;
+  const compactColumns = entries.length > 8 ? 4 : columns;
+  roster.dataset.count = String(entries.length);
+  roster.dataset.dense = String(entries.length > 4);
+  roster.dataset.many = String(entries.length > 9);
+  roster.dataset.crowded = String(entries.length > 12);
   roster.style.setProperty("--roster-columns", String(columns));
   roster.style.setProperty(
     "--roster-rows",
-    String(Math.ceil(members.length / columns)),
+    String(Math.ceil(entries.length / columns)),
   );
   roster.style.setProperty("--roster-compact-columns", String(compactColumns));
   roster.style.setProperty(
     "--roster-compact-rows",
-    String(Math.ceil(members.length / compactColumns)),
+    String(Math.ceil(entries.length / compactColumns)),
   );
-  roster.innerHTML = members
-    .map((member) => {
-      const character = getCharacter(member.character),
-        hand = activeHands(settings).find(
-          (side) => cast.controls[side] === member.id,
-        );
-      const index = cast.members.indexOf(member) + 1;
-      return `<div class="stage-member ${selected === member.id ? "active" : ""}"><button class="stage-member-select" data-dock-member="${member.id}" aria-label="เชิด${character.name} ตัวที่${index}" aria-pressed="${selected === member.id}" aria-description="${hand ? `ควบคุมด้วยมือ${hand === "Left" ? "ซ้าย" : "ขวา"}` : "ยังไม่ได้เลือกเชิด"}">${characterPreview(member.character, `dock-${member.id}`)}<strong>${character.name}</strong><span class="member-check">${icon("check")}</span></button><div class="stage-side-options" role="group" aria-label="ฝั่งแสดงของ${character.name} ตัวที่${index}">${(["Left", "Right"] as const).map((side) => `<label><input type="checkbox" data-placement-member="${member.id}" value="${side}" ${member.side === side ? "checked" : ""} aria-label="แสดง${character.name}ฝั่ง${side === "Left" ? "ซ้าย" : "ขวา"} ตัวที่${index}"/><span>${side === "Left" ? "ซ้าย" : "ขวา"}</span></label>`).join("")}</div></div>`;
-    })
-    .join("");
+  roster.innerHTML = renderCatalog(entries, cast, settings);
+  el("cast-count").textContent = String(entries.length);
+  el("cast-count").title = "บนเวที " + cast.members.length + " ตัว";
+}
+function ensureCatalogActor(
+  character: Settings["character"],
+  side: HandSide,
+  id?: string,
+) {
+  const member =
+    cast.members.find((member) => member.id === id) ??
+    showCatalogCharacter(cast, character, side, crypto.randomUUID());
+  if (!member) {
+    notify("เวทีแสดงได้สูงสุด " + MAX_CAST + " ตัว เลือกซ่อนตัวอื่นก่อน");
+    return null;
+  }
+  moveMember(cast, member.id, side);
+  for (const hand of HAND_SIDES)
+    if (cast.controls[hand] === member.id) bindCastHand(hand);
+  return member;
+}
+function refreshCast() {
+  syncCastSettings();
+  save();
+  updateLabels();
+  drawTrackingOverlay();
 }
 el("stage-roster").addEventListener("click", (event) => {
-  const id = (event.target as HTMLElement).closest<HTMLElement>(
-    "[data-dock-member]",
-  )?.dataset.dockMember;
-  if (id) {
-    selectActor(id);
-    el("stage").focus({ preventScroll: true });
-  }
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    "[data-dock-character]",
+  );
+  if (!button) return;
+  const character = button.dataset.dockCharacter;
+  if (!isCharacterId(character)) return;
+  let member = cast.members.find(
+    (member) => member.id === button.dataset.dockMember,
+  );
+  if (!member)
+    member =
+      ensureCatalogActor(
+        character,
+        memberForHand(cast, settings.hand)?.side ?? settings.hand,
+      ) ?? undefined;
+  if (!member) return;
+  selectActor(member.id);
+  el("stage").focus({ preventScroll: true });
 });
 el("stage-roster").addEventListener("change", (event) => {
-  const input = event.target as HTMLInputElement;
-  const id = input.dataset.placementMember,
+  const input = event.target as HTMLInputElement,
+    character = input.dataset.catalogCharacter,
     side = input.value;
-  if (!id || (side !== "Left" && side !== "Right")) return;
-  const member = cast.members.find((member) => member.id === id);
-  if (!member) return;
-  if (member.side === side) {
-    input.checked = true;
+  if (!isCharacterId(character) || (side !== "Left" && side !== "Right"))
     return;
+  const member = cast.members.find(
+    (member) => member.id === input.dataset.placementMember,
+  );
+  if (input.checked) {
+    const shown = ensureCatalogActor(character, side, member?.id);
+    if (!shown) {
+      input.checked = false;
+      return;
+    }
+    if (!cast.controls.Left && !cast.controls.Right) {
+      selectMember(cast, shown.id, settings.hand, false);
+      bindCastHand(settings.hand);
+    }
+  } else if (member && member.side === side) {
+    hideCatalogMember(cast, member.id);
+    for (const hand of HAND_SIDES) bindCastHand(hand);
   }
-  moveActor(id, side);
+  refreshCast();
   el("stage-roster")
     .querySelector<HTMLInputElement>(
-      `[data-placement-member="${id}"][value="${side}"]`,
+      '[data-catalog-character="' + character + '"][value="' + side + '"]',
     )
     ?.focus({ preventScroll: true });
 });
@@ -422,8 +374,6 @@ function syncCastSettings() {
     const member = memberForHand(cast, side);
     if (member) settings.characters[side] = member.character;
   }
-  if (!memberForHand(cast, settings.hand))
-    settings.hand = cast.controls.Right ? "Right" : "Left";
   settings.character = settings.characters[settings.hand];
 }
 function selectActor(id: string) {
@@ -446,120 +396,6 @@ function selectActor(id: string) {
 
   drawTrackingOverlay();
 }
-function openCast() {
-  const member = memberForHand(cast, settings.hand);
-  castPage = member
-    ? Math.floor(
-        cast.members.filter((m) => m.side === member.side).indexOf(member) / 2,
-      )
-    : 0;
-  renderCast();
-  castDialog.showModal();
-}
-function moveActor(id: string, side: HandSide) {
-  if (!moveMember(cast, id, side)) return;
-  for (const hand of HAND_SIDES)
-    if (cast.controls[hand] === id) bindCastHand(hand);
-  const member = cast.members.find((member) => member.id === id)!;
-  castPage = Math.floor(
-    cast.members.filter((member) => member.side === side).indexOf(member) / 2,
-  );
-  syncCastSettings();
-  save();
-  updateLabels();
-  drawTrackingOverlay();
-}
-function renderCast() {
-  const pageCount = Math.max(
-    1,
-    ...HAND_SIDES.map((side) =>
-      Math.ceil(cast.members.filter((m) => m.side === side).length / 2),
-    ),
-  );
-  castPage = Math.min(castPage, pageCount - 1);
-  el("cast-total").textContent = `${cast.members.length}/${MAX_CAST}`;
-  el<HTMLSelectElement>("cast-control-hand").value = settings.hand;
-  el<HTMLButtonElement>("cast-add").disabled = cast.members.length >= MAX_CAST;
-  el("cast-roster").innerHTML = HAND_SIDES.map((side) => {
-    const group = cast.members.filter((m) => m.side === side),
-      visible = group.slice(castPage * 2, castPage * 2 + 2);
-    return `<section class="cast-group"><h3>ฝั่ง${side === "Left" ? "ซ้าย" : "ขวา"} · ${group.length}</h3>${
-      visible
-        .map((member) => {
-          const character = getCharacter(member.character),
-            hand = HAND_SIDES.find((h) => cast.controls[h] === member.id);
-          return `<div class="cast-member ${cast.controls[settings.hand] === member.id ? "selected" : ""}" data-cast-member="${member.id}"><button class="cast-select" data-select-cast="${member.id}" aria-label="ควบคุม${character.name} ฝั่ง${side === "Left" ? "ซ้าย" : "ขวา"} ตัวที่${group.indexOf(member) + 1}" aria-pressed="${cast.controls[settings.hand] === member.id}">${characterPreview(member.character, `cast-${member.id}`)}<span><strong>${character.name}</strong><small>${hand ? `มือ${hand === "Left" ? "ซ้าย" : "ขวา"}` : "พักบนเวที"}</small></span></button><button class="cast-small" data-move-cast="${member.id}" aria-label="ย้าย${character.name}ไปฝั่ง${side === "Left" ? "ขวา" : "ซ้าย"}" title="ย้ายฝั่ง">${side === "Left" ? "→" : "←"}</button><button class="cast-small" data-remove-cast="${member.id}" aria-label="นำ${character.name}ออกจากเวที" title="นำออกจากเวที" ${cast.members.length <= 1 ? "disabled" : ""}>×</button></div>`;
-        })
-        .join("") || '<p class="cast-empty">ไม่มีตัวละครในหน้านี้</p>'
-    }</section>`;
-  }).join("");
-  el("cast-page").textContent = `${castPage + 1} / ${pageCount}`;
-  el<HTMLButtonElement>("cast-prev").disabled = castPage === 0;
-  el<HTMLButtonElement>("cast-next").disabled = castPage >= pageCount - 1;
-}
-el("cast-button").addEventListener("click", openCast);
-el("close-cast").addEventListener("click", () => castDialog.close());
-el("cast-prev").addEventListener("click", () => {
-  castPage--;
-  renderCast();
-});
-el("cast-next").addEventListener("click", () => {
-  castPage++;
-  renderCast();
-});
-el("cast-control-hand").addEventListener("change", () => {
-  settings.hand = el<HTMLSelectElement>("cast-control-hand").value as HandSide;
-  active = ensemble.sessions[settings.hand];
-
-  updateLabels();
-  save();
-});
-el("cast-add").addEventListener("click", () => {
-  const character = el<HTMLSelectElement>("cast-new-character").value;
-  const side = el<HTMLSelectElement>("cast-new-side").value as HandSide;
-  if (!isCharacterId(character)) return;
-  const member = addMember(cast, character, side, crypto.randomUUID());
-  if (!member) {
-    el("cast-message").textContent = `เวทีรองรับได้สูงสุด ${MAX_CAST} ตัว`;
-    return;
-  }
-  castPage = Math.floor(
-    (cast.members.filter((m) => m.side === side).length - 1) / 2,
-  );
-  selectActor(member.id);
-  renderCast();
-  el("cast-message").textContent =
-    `เพิ่ม${getCharacter(character).name}ฝั่ง${side === "Left" ? "ซ้าย" : "ขวา"}แล้ว`;
-});
-el("cast-roster").addEventListener("click", (event) => {
-  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
-    "button",
-  );
-  if (!button) return;
-  const id =
-    button.dataset.selectCast ??
-    button.dataset.removeCast ??
-    button.dataset.moveCast;
-  const member = cast.members.find((m) => m.id === id);
-  if (!member) return;
-  if (button.dataset.selectCast) {
-    selectActor(member.id);
-    castDialog.close();
-    return;
-  }
-  if (button.dataset.moveCast) {
-    moveActor(member.id, member.side === "Left" ? "Right" : "Left");
-    return;
-  } else {
-    if (!removeMember(cast, member.id)) return;
-    for (const side of HAND_SIDES) bindCastHand(side);
-  }
-  syncCastSettings();
-  save();
-  updateLabels();
-
-  renderCast();
-});
 el("stage").addEventListener("click", (event) => {
   const pointer = event as MouseEvent,
     id = renderer.hitTest(pointer.clientX, pointer.clientY);
@@ -568,6 +404,7 @@ el("stage").addEventListener("click", (event) => {
 el("stage").addEventListener("keydown", (event) => {
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
   event.preventDefault();
+  if (!cast.members.length) return;
   const index = cast.members.findIndex(
     (m) => m.id === cast.controls[settings.hand],
   );
@@ -632,6 +469,9 @@ function updateHandChecks() {
       `เชิดมือ${side === "Left" ? "ซ้าย" : "ขวา"} · ${name}`,
     );
     el(`control-${side}-name`).textContent = name;
+    document
+      .querySelector<HTMLButtonElement>(`[data-control-hand="${side}"]`)!
+      .setAttribute("aria-pressed", String(settings.hand === side));
     el(`control-${side}-label`).classList.toggle(
       "focused",
       settings.hand === side,
@@ -639,6 +479,15 @@ function updateHandChecks() {
   }
 }
 for (const side of HAND_SIDES) {
+  document
+    .querySelector<HTMLButtonElement>(`[data-control-hand="${side}"]`)!
+    .addEventListener("click", () => {
+      settings.hand = side;
+      if (settings.handMode === "single") bindCastHand(side);
+      save();
+      updateLabels();
+      drawTrackingOverlay();
+    });
   el(`control-${side}`).addEventListener("change", () => {
     const result = checkHandControl(
       cast,
@@ -649,7 +498,7 @@ for (const side of HAND_SIDES) {
     );
     if (!result.accepted) {
       updateHandChecks();
-      notify("เพิ่มตัวละครอีกหนึ่งตัว เพื่อเชิดสองมือพร้อมกัน");
+      notify("เลือกตัวละครอีกแบบจากรายการก่อนเปิดใช้มือนี้");
       return;
     }
 
@@ -904,18 +753,6 @@ el("hand-mode").addEventListener("change", () => {
       : "เปลี่ยนเป็นหนึ่งมือแล้ว",
   );
 });
-el("hand-side").addEventListener("change", () => {
-  settings.hand = el<HTMLSelectElement>("hand-side").value as HandSide;
-  active = ensemble.sessions[settings.hand];
-
-  if (settings.handMode === "single") {
-    bindCastHand(settings.hand);
-  }
-  updateLabels();
-  save();
-
-  drawTrackingOverlay();
-});
 el("mirror").addEventListener("change", () => {
   settings.mirror = el<HTMLInputElement>("mirror").checked;
   ensemble.reset(settings);
@@ -1018,8 +855,6 @@ document.addEventListener("keydown", (event) => {
     calibrationDialog.open ||
     guideDialog.open ||
     characterDialog.open ||
-    castDialog.open ||
-    libraryDialog.open ||
     settingsDialog.open ||
     target.matches("input,select,textarea,button,a") ||
     target.isContentEditable ||

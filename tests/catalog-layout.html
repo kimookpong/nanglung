@@ -1,0 +1,17 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>Legacy catalog layout fixture</title><div id="app"></div><script type="module">
+import '/src/style.css';
+import {defaultSettings} from '/src/core.ts';
+import {initialCast,addMember,placement} from '/src/cast.ts';
+import {catalogEntries} from '/src/catalog.ts';
+import {renderCatalog} from '/src/catalog-ui.ts';
+import {renderStudio} from '/src/ui.ts';
+import {StageRenderer} from '/src/renderer.ts';
+// Independent layout fixture: no local storage, camera, or user stage changes.
+const settings=defaultSettings(),cast=initialCast(settings);cast.members=[];cast.controls={Left:null,Right:null};
+for(let i=0;i<12;i++)addMember(cast,'theng',i%2?'Right':'Left','legacy-'+i);
+const entries=catalogEntries(cast);document.getElementById('app').innerHTML=renderStudio(settings);
+const roster=document.getElementById('stage-roster');Object.assign(roster.dataset,{count:String(entries.length),dense:'true',many:'true',crowded:'true'});
+for(const [name,value] of Object.entries({'--roster-columns':4,'--roster-rows':5,'--roster-compact-columns':4,'--roster-compact-rows':5}))roster.style.setProperty(name,String(value));
+roster.innerHTML=renderCatalog(entries,cast,settings);document.getElementById('cast-count').textContent=String(entries.length);
+const renderer=new StageRenderer(document.getElementById('stage'));renderer.drawActors(cast.members.map(member=>({key:member.id,character:member.character,pose:member.pose,placement:placement(cast,member)})),settings);
+</script></html>

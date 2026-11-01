@@ -27,11 +27,11 @@ export function parseCast(value: unknown, settings: Settings): CastState {
     const side=raw.side==="Right"?"Right":"Left";
     members.push({id:raw.id,character:raw.character,side,pose:safePose(raw.pose,side)});ids.add(raw.id);
   }
-  if(!members.length)return initialCast(settings);
+  if(!members.length)return input.members.length===0?{version:1,members:[],controls:{Left:null,Right:null}}:initialCast(settings);
   const valid=(id:unknown)=>typeof id==="string"&&ids.has(id)?id:null;
   const Left=valid(input.controls?.Left),Right=valid(input.controls?.Right);
   const controls={Left,Right:Right===Left?null:Right};
-  if(!controls.Left&&!controls.Right)controls[settings.hand]=members[0].id;
+  if(!controls.Left&&!controls.Right&&!(input.controls?.Left===null&&input.controls?.Right===null))controls[settings.hand]=members[0].id;
   return {version:1,members,controls};
 }
 export function memberForHand(cast:CastState,side:HandSide) { return cast.members.find(m=>m.id===cast.controls[side]); }

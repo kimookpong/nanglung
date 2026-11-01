@@ -1,5 +1,4 @@
 import { ACTIONS, FINGERS, type Settings } from "./core";
-import { CHARACTERS } from "./characters";
 import { icon, fingerNames, actionNames } from "./ui-assets";
 import { renderWorkspace } from "./studio-layout";
 export { icon, fingerNames, actionNames, characterPreview } from "./ui-assets";
@@ -7,15 +6,6 @@ export { icon, fingerNames, actionNames, characterPreview } from "./ui-assets";
 export function renderStudio(settings: Settings) {
   return `
 ${renderWorkspace(settings)}
-
-<dialog id="cast-dialog" class="dialog cast-dialog" aria-labelledby="cast-title">
-  <div class="dialog-heading"><h2 id="cast-title">ตัวละครบนเวที <span id="cast-total"></span></h2><button id="close-cast" class="icon-button" aria-label="ปิดจัดตัวละคร">${icon("close")}</button></div>
-  <div class="cast-add-row"><select id="cast-new-character" aria-label="ตัวละครที่จะเพิ่ม">${CHARACTERS.map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}</select><select id="cast-new-side" aria-label="ฝั่งที่จะเพิ่ม"><option value="Left">ฝั่งซ้าย</option><option value="Right">ฝั่งขวา</option></select><button id="cast-add" class="primary-button">${icon("plus")} เพิ่ม</button></div>
-  <div class="cast-control-row"><label for="cast-control-hand">ควบคุมด้วย</label><select id="cast-control-hand" aria-label="มือที่ใช้ควบคุมตัวละคร"><option value="Right">มือขวา</option><option value="Left">มือซ้าย</option></select><span>คลิกตัวบนเวทีเพื่อสลับ</span></div>
-  <div id="cast-roster" class="cast-roster"></div>
-  <div class="cast-pagination"><button id="cast-prev" class="secondary-button" aria-label="ตัวละครหน้าก่อน">←</button><span id="cast-page" role="status"></span><button id="cast-next" class="secondary-button" aria-label="ตัวละครหน้าถัดไป">→</button></div>
-  <p id="cast-message" class="cast-message" role="status">ตัวที่ไม่ได้ควบคุมจะคงท่าอยู่บนเวที</p>
-</dialog>
 
 <dialog id="settings-dialog" class="dialog settings-dialog" aria-labelledby="settings-title">
   <div class="dialog-heading"><h2 id="settings-title">ตั้งค่าสตูดิโอ</h2><button id="close-settings" class="icon-button" aria-label="ปิดการตั้งค่า">${icon("close")}</button></div>
@@ -42,6 +32,6 @@ ${renderWorkspace(settings)}
   <div class="step-dots" id="step-dots"></div><div class="calibration-content"><div class="calibration-preview"><canvas id="calibration-video" width="320" height="240"></canvas><canvas id="calibration-overlay" width="320" height="240"></canvas></div><div class="calibration-step"><span id="step-number"></span><h3 id="step-title"></h3><p id="step-copy"></p></div></div>
   <p id="calibration-live" class="calibration-live" role="status"></p><div class="capture-progress"><span id="capture-progress"></span></div><p id="calibration-error" class="inline-error" role="alert"></p><div class="dialog-actions"><button id="restart-calibration" class="text-button">เริ่มใหม่</button><button id="capture" class="primary-button">เก็บค่าท่านี้</button></div>
 </dialog>
-<dialog id="guide-dialog" class="dialog guide-dialog" aria-labelledby="guide-title"><div class="dialog-heading"><h2 id="guide-title">เริ่มเชิดตัวหนัง</h2><button id="close-guide" class="icon-button" aria-label="ปิดวิธีใช้งาน">${icon("close")}</button></div><ol class="guide-steps"><li><b>จัดตัวหนัง</b><span>กด “เพิ่มตัว” เลือกแบบและฝั่ง แล้วคลิกตัวบนเวทีหรือรายการเพื่อเลือกเชิด</span></li><li><b>เลือกมือที่จะเชิด</b><span>เช็กซ้ายหรือขวาใต้เวที หนึ่งมือต่อหนึ่งตัว เช็กทั้งสองข้างเพื่อเชิดพร้อมกัน</span></li><li><b>เปิดกล้องและปรับเทียบ</b><span>หันฝ่ามือเข้ากล้อง แล้วปรับเทียบสี่ท่า หากใช้สองมือให้ปรับเทียบแยกซ้ายและขวา</span></li><li><b>หันซ้าย–ขวาด้วยนิ้วก้อย</b><span>งอก้อยตั้งแต่ 60% ค้างเพื่อหมุนตัว แล้วปล่อยก่อนสั่งซ้ำ ใช้ “เปลี่ยนแบบ” เพื่อเปลี่ยนตัวที่เลือก</span></li></ol><div class="shortcut-list"><span><kbd>Space</kbd>พัก</span><span><kbd>R</kbd>รีเซ็ต</span><span><kbd>F</kbd>เต็มจอ</span></div></dialog>
+<dialog id="guide-dialog" class="dialog guide-dialog" aria-labelledby="guide-title"><div class="dialog-heading"><h2 id="guide-title">เริ่มเชิดตัวหนัง</h2><button id="close-guide" class="icon-button" aria-label="ปิดวิธีใช้งาน">${icon("close")}</button></div><ol class="guide-steps"><li><b>จัดตัวหนัง</b><span>รายการมีครบทุกแบบ เลือกฝั่งบนการ์ดเพื่อแสดง หรือคลิกภาพเพื่อเลือกเชิด</span></li><li><b>เลือกมือที่จะเชิด</b><span>กดชื่อมือซ้าย/ขวาใต้เวทีเพื่อเลือกมือ หนึ่งมือต่อหนึ่งตัว เช็กทั้งสองมือเพื่อเชิดพร้อมกัน</span></li><li><b>เปิดกล้องและปรับเทียบ</b><span>หันฝ่ามือเข้ากล้อง แล้วปรับเทียบสี่ท่า หากใช้สองมือให้ปรับเทียบแยกซ้ายและขวา</span></li><li><b>หันซ้าย–ขวาด้วยนิ้วก้อย</b><span>งอก้อยตั้งแต่ 60% ค้างเพื่อหมุนตัว แล้วปล่อยก่อนสั่งซ้ำ</span></li></ol><div class="shortcut-list"><span><kbd>Space</kbd>พัก</span><span><kbd>R</kbd>รีเซ็ต</span><span><kbd>F</kbd>เต็มจอ</span></div></dialog>
 <dialog id="character-dialog" class="dialog character-dialog" aria-labelledby="about-character-name"><div class="dialog-heading"><h2 id="about-character-name"></h2><button id="close-character" class="icon-button" aria-label="ปิดข้อมูลตัวละคร">${icon("close")}</button></div><div class="character-detail"><div id="about-character-image" class="character-preview"></div><div><p id="about-character-traits"></p><span>แนวทางการเชิด</span><p id="about-character-gesture"></p></div></div><p class="guide-footnote">งานวาดดิจิทัลจากการศึกษา รูปและท่าดัดแปลง ยังไม่ได้ตรวจทานโดยครูหนัง</p><div class="character-links"><a id="character-source" target="_blank" rel="noopener noreferrer">แหล่งอ้างอิง ม.อ. ↗</a><a id="character-download" download>ดาวน์โหลด SVG ↓</a></div></dialog>`;
 }
