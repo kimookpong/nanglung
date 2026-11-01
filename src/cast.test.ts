@@ -15,7 +15,7 @@ describe("persistent stage cast",()=>{
   it("adds independent copies and changes only the chosen hand while old poses stay frozen",()=>{
     const cast=initialCast(defaultSettings()),old=memberForHand(cast,"Right")!;
     old.pose.mouth=.8;old.pose.facing=-1;
-    const added=addMember(cast,"theng","Left","copy")!;
+    const added=addMember(cast,"theng","Right","copy")!;
     expect(selectMember(cast,added.id,"Right")).toBe("Right");
     expect(memberForHand(cast,"Right")).toBe(added);
     expect(cast.controls.Left).toBe("initial-Left");
@@ -27,10 +27,10 @@ describe("persistent stage cast",()=>{
     expect(selectMember(cast,cast.controls.Left!,"Right")).toBe("Left");
     expect(cast.controls).toEqual({Left:"initial-Left",Right:"initial-Right"});
   });
-  it("keeps the same physical hand when a single-hand performer clicks the other bank",()=>{
+  it("uses the actor's matching physical hand even in single-hand mode",()=>{
     const cast=initialCast(defaultSettings());
-    expect(selectMember(cast,"initial-Left","Right",false)).toBe("Right");
-    expect(cast.controls).toEqual({Left:null,Right:"initial-Left"});
+    expect(selectMember(cast,"initial-Left","Right")).toBe("Left");
+    expect(cast.controls).toEqual({Left:"initial-Left",Right:"initial-Right"});
     expect(cast.members).toHaveLength(2);
   });
   it("repairs deleted control bindings and retains one final actor",()=>{

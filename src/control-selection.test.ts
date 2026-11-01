@@ -69,17 +69,15 @@ describe("toolbar hand checkboxes", () => {
     });
     expect({ settings, cast }).toEqual(before);
   });
-  it("can transfer a single paused actor to the other hand", () => {
+  it("rejects the opposite hand even when the actor is paused", () => {
     const settings = defaultSettings(),
       cast = initialCast(settings);
     cast.members = cast.members.filter(
       (member) => member.id === cast.controls.Right,
     );
     cast.controls.Left = null;
-    expect(checkHandControl(cast, settings, "Left", true, true).accepted).toBe(
-      true,
-    );
-    expect(cast.controls).toEqual({ Left: "initial-Right", Right: null });
-    expect(activeHands(settings)).toEqual(["Left"]);
+    const before=structuredClone({cast,settings});
+    expect(checkHandControl(cast, settings, "Left", true, true).accepted).toBe(false);
+    expect({cast,settings}).toEqual(before);
   });
 });

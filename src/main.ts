@@ -27,12 +27,15 @@ import {
   hasRetiredCastMembers,
   memberForHand,
   moveMember,
+  positionMember,
   parseCast,
   placement,
   selectMember,
   MAX_CAST,
   type CastState,
+  type CastMember,
 } from "./cast";
+import { stageAnchor, stagePoint } from "./stage-geometry";
 
 import {
   icon,
@@ -54,11 +57,16 @@ try {
 }
 
 let cast: CastState;
-let migrateRetiredCast = false;
+let migrateSavedCast = false;
 try {
   const storedCast = JSON.parse(localStorage.getItem("nanglung.cast.v1") ?? "null");
-  migrateRetiredCast = hasRetiredCastMembers(storedCast);
+  migrateSavedCast = hasRetiredCastMembers(storedCast);
   cast = parseCast(storedCast, settings);
+  if(storedCast?.version===1&&JSON.stringify(storedCast.controls)!==JSON.stringify(cast.controls)) {
+    migrateSavedCast=true;
+    const focused=cast.members.find(member=>member.id===storedCast.controls?.[settings.hand]);
+    if(focused)settings.hand=focused.side;
+  }
 } catch {
   cast = initialCast(settings);
 }
@@ -129,6 +137,12 @@ let cameraOn = false;
 let cameraLoading = false;
 let cameraToken = 0;
 let paused = false;
+let stageDrag: {
+  pointerId: number; id: string; active: boolean;
+  clientX: number; clientY: number; start: {x:number;y:number};
+  anchor: {x:number;baseline:number}; original: CastMember;
+  controls: CastState["controls"]; hand: HandSide; characters: Settings["characters"];
+} | null = null;
 let overlayVisible = true;
 let toastTimer: ReturnType<typeof setTimeout>;
 
@@ -286,9 +300,12 @@ function ensureCatalogActor(
     notify("เวทีแสดงได้สูงสุด " + MAX_CAST + " ตัว เลือกซ่อนตัวอื่นก่อน");
     return null;
   }
+  const wasFocused=cast.controls[settings.hand]===member.id;
+  const before={...cast.controls};
   moveMember(cast, member.id, side);
+  if(wasFocused)settings.hand=side;
   for (const hand of HAND_SIDES)
-    if (cast.controls[hand] === member.id) bindCastHand(hand);
+    if (cast.controls[hand] !== before[hand] || cast.controls[hand] === member.id) bindCastHand(hand);
   return member;
 }
 function refreshCast() {
@@ -333,7 +350,7 @@ el("stage-roster").addEventListener("change", (event) => {
       return;
     }
     if (!cast.controls.Left && !cast.controls.Right) {
-      selectMember(cast, shown.id, settings.hand, false);
+      settings.hand=selectMember(cast, shown.id, settings.hand);
       bindCastHand(settings.hand);
     }
   } else if (member && member.side === side) {
@@ -378,31 +395,63 @@ function syncCastSettings() {
   settings.character = settings.characters[settings.hand];
 }
 function selectActor(id: string) {
-  const previousHand = settings.hand,
-    previousId = cast.controls[previousHand];
-  const side = selectMember(
-    cast,
-    id,
-    previousHand,
-    settings.handMode === "dual",
-  );
+  const before={...cast.controls};
+  const side = selectMember(cast,id,settings.hand);
   settings.hand = side;
-  if (previousHand !== side || previousId !== id) {
-    if (side === previousHand || settings.handMode === "single")
-      bindCastHand(side);
-  }
+  if(before[side]!==id)bindCastHand(side);
   syncCastSettings();
   save();
   updateLabels();
 
   drawTrackingOverlay();
 }
-el("stage").addEventListener("click", (event) => {
-  const pointer = event as MouseEvent,
-    id = renderer.hitTest(pointer.clientX, pointer.clientY);
-  if (id) selectActor(id);
+const stageCanvas=el<HTMLCanvasElement>("stage");
+stageCanvas.addEventListener("pointerdown", event=>{
+  if(event.button!==0||!event.isPrimary||stageDrag)return;
+  const start=stagePoint(event.clientX,event.clientY,stageCanvas.getBoundingClientRect());
+  const id=renderer.hitTest(event.clientX,event.clientY),member=cast.members.find(member=>member.id===id);
+  if(!start||!member)return;
+  stageDrag={pointerId:event.pointerId,id:member.id,active:false,clientX:event.clientX,clientY:event.clientY,start,
+    anchor:stageAnchor(member.pose,placement(cast,member)),original:structuredClone(member),controls:{...cast.controls},hand:settings.hand,characters:{...settings.characters}};
+  selectActor(member.id);stageCanvas.focus({preventScroll:true});event.preventDefault();
+  stageCanvas.setPointerCapture(event.pointerId);
 });
+stageCanvas.addEventListener("pointermove",event=>{
+  const drag=stageDrag;
+  if(!drag||drag.pointerId!==event.pointerId)return;
+  if(!drag.active&&Math.hypot(event.clientX-drag.clientX,event.clientY-drag.clientY)<5)return;
+  const point=stagePoint(event.clientX,event.clientY,stageCanvas.getBoundingClientRect());
+  if(!point)return;
+  drag.active=true;stageCanvas.classList.add("dragging");event.preventDefault();
+  const previousSide=cast.members.find(member=>member.id===drag.id)!.side;
+  const side=positionMember(cast,drag.id,drag.anchor.x+point.x-drag.start.x,drag.anchor.baseline+point.y-drag.start.y)!;
+  if(side!==previousSide) {
+    settings.hand=side;syncCastSettings();
+    for(const hand of HAND_SIDES)bindCastHand(hand);
+    updateLabels();drawTrackingOverlay();
+  }
+});
+function finishStageDrag(cancel=false) {
+  const drag=stageDrag;if(!drag)return;
+  stageDrag=null;stageCanvas.classList.remove("dragging");
+  if(cancel&&drag.active) {
+    const member=cast.members.find(member=>member.id===drag.id);
+    if(member){delete member.position;Object.assign(member,drag.original);}
+    cast.controls=drag.controls;settings.hand=drag.hand;settings.characters=drag.characters;
+  }
+  if(drag.active) {
+    for(const hand of HAND_SIDES)bindCastHand(hand);
+    refreshCast();
+  }
+  if(stageCanvas.hasPointerCapture(drag.pointerId))stageCanvas.releasePointerCapture(drag.pointerId);
+}
+stageCanvas.addEventListener("pointerup",event=>{if(stageDrag?.pointerId===event.pointerId)finishStageDrag();});
+stageCanvas.addEventListener("pointercancel",event=>{if(stageDrag?.pointerId===event.pointerId)finishStageDrag(true);});
+stageCanvas.addEventListener("lostpointercapture",()=>finishStageDrag(true));
+window.addEventListener("blur",()=>finishStageDrag(true));
 el("stage").addEventListener("keydown", (event) => {
+  if(event.key==="Escape"&&stageDrag){event.preventDefault();finishStageDrag(true);return;}
+  if(stageDrag){event.preventDefault();return;}
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
   event.preventDefault();
   if (!cast.members.length) return;
@@ -499,7 +548,7 @@ for (const side of HAND_SIDES) {
     );
     if (!result.accepted) {
       updateHandChecks();
-      notify("เลือกตัวละครอีกแบบจากรายการก่อนเปิดใช้มือนี้");
+      notify(`ยังไม่มีตัวละครฝั่ง${side === "Left" ? "ซ้าย" : "ขวา"} เลือกฝั่งบนการ์ดหรือลากมาฝั่งนี้ก่อน`);
       return;
     }
 
@@ -849,6 +898,7 @@ el("exit-stage").addEventListener("click", () => {
   el("stage-shell").classList.remove("presentation");
 });
 document.addEventListener("keydown", (event) => {
+  if(event.defaultPrevented||stageDrag?.active)return;
   if (event.key === "Escape")
     el("stage-shell").classList.remove("presentation");
   const target = event.target as HTMLElement;
@@ -893,7 +943,7 @@ function frame(now: number) {
       ensemble.sessions[side].controller.tick(now, dt, settings.smoothing);
   for (const side of activeHands(settings)) {
     const member = memberForHand(cast, side);
-    if (member) {
+    if (member && !(stageDrag?.active&&stageDrag.id===member.id)) {
       const pose = ensemble.sessions[side].controller.pose;
       if (
         cameraOn &&
@@ -905,8 +955,9 @@ function frame(now: number) {
       member.pose = { ...pose };
     }
   }
+  const frontActor=stageDrag?.active?stageDrag.id:cast.controls[settings.hand];
   renderer.drawActors(
-    cast.members.map((member) => ({
+    [...cast.members].sort((a,b)=>Number(a.id===frontActor)-Number(b.id===frontActor)).map((member) => ({
       key: member.id,
       pose: member.pose,
       character: member.character,
@@ -918,6 +969,8 @@ function frame(now: number) {
     })),
     settings,
     paused,
+    now,
+    stageDrag?.active?stageDrag.id:undefined,
   );
   if (now - previousUi > 90) {
     previousUi = now;
@@ -939,7 +992,7 @@ function frame(now: number) {
               `มือ${side === "Left" ? "ซ้าย" : "ขวา"} ควบคุม${getCharacter(settings.characters[side]).name}`,
           )
           .join(" · ") +
-        " · คลิกตัวละครเพื่อสลับควบคุม",
+        " · ลากเพื่อจัดตำแหน่งและย้ายฝั่ง · ฝั่งซ้ายใช้มือซ้าย ฝั่งขวาใช้มือขวา",
     );
     if (calibrationDialog.open) {
       const preview = el<HTMLCanvasElement>("calibration-video");
@@ -981,7 +1034,7 @@ for (const side of HAND_SIDES) bindCastHand(side);
 setInterval(() => {
   // Only the foreground performance writes continuous poses. Idle preview tabs
   // must not overwrite a reset or selection made in another studio window.
-  if (!cameraOn || document.hidden || !document.hasFocus()) return;
+  if (!cameraOn || document.hidden || !document.hasFocus() || stageDrag?.active) return;
   const snapshot = JSON.stringify(cast);
   if (snapshot === savedCast) return;
   try {
@@ -1002,6 +1055,10 @@ window.addEventListener("storage", (event) => {
   try {
     const value = JSON.parse(event.newValue);
     if (value?.version !== 1 || !Array.isArray(value.members)) return;
+    if(stageDrag) {
+      const pointerId=stageDrag.pointerId;stageDrag=null;stageCanvas.classList.remove("dragging");
+      if(stageCanvas.hasPointerCapture(pointerId))stageCanvas.releasePointerCapture(pointerId);
+    }
     cast = parseCast(value, settings);
     savedCast = JSON.stringify(cast);
     castDirty = false;
@@ -1011,7 +1068,7 @@ window.addEventListener("storage", (event) => {
     updateLabels();
 
     updateCameraUI();
-    if (hasRetiredCastMembers(value)) save();
+    if (hasRetiredCastMembers(value)||JSON.stringify(value.controls)!==JSON.stringify(cast.controls)) save();
   } catch {
     /* Ignore malformed values from another tab. */
   }
@@ -1027,7 +1084,7 @@ for (const event of ["input", "change", "pointerup", "keyup"] as const)
   });
 updateLabels();
 updateCameraUI();
-if (migrateRetiredCast) save();
+if (migrateSavedCast) save();
 
 requestAnimationFrame(frame);
 if (storageUnavailable)

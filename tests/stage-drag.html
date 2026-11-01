@@ -1,0 +1,30 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>Stage drag and hand ownership check</title><style>body{margin:16px;background:#eee5d5;font:14px sans-serif}button{padding:8px;margin:0 8px 12px 0}iframe{display:block;width:100%;height:550px;border:0}pre{white-space:pre-wrap}</style><h1>ลากจัดเวทีและผูกมือตามฝั่ง</h1><p>ใช้บน origin ทดสอบแยก ปุ่มเริ่มจะเขียนฉากทดสอบสองตัวในเบราว์เซอร์</p><button id="seed">เริ่มฉากทดสอบ</button><button id="inspect">ตรวจข้อมูลที่บันทึก</button><button id="drag">ทดสอบลากข้ามฝั่ง</button><button id="cancel">ทดสอบยกเลิกการลาก</button><button id="touch">ทดสอบลากแบบสัมผัส</button><button id="cancel-pointer">ทดสอบ pointercancel</button><pre id="result">ยังไม่เริ่ม</pre><iframe id="studio" title="สตูดิโอทดสอบลาก"></iframe><script type="module">
+import {defaultSettings} from '/src/core.ts';
+import {initialCast,placement} from '/src/cast.ts';
+import {getCharacter} from '/src/characters.ts';
+import {stageAnchor} from '/src/stage-geometry.ts';
+import {depthPoint} from '/src/puppet-depth.ts';
+const frame=document.getElementById('studio'),result=document.getElementById('result');
+const read=()=>JSON.parse(localStorage.getItem('nanglung.cast.v1'));
+document.getElementById('seed').onclick=()=>{const settings=defaultSettings();settings.handMode='dual';settings.profiles.Left.calibrated=true;localStorage.setItem('nanglung.settings.v1',JSON.stringify(settings));localStorage.setItem('nanglung.cast.v1',JSON.stringify(initialCast(settings)));frame.src='/?drag-check='+Date.now();result.textContent='กำลังเปิดฉาก…';frame.onload=()=>{result.textContent=JSON.stringify(read(),null,2);};};
+document.getElementById('inspect').onclick=()=>{result.textContent=JSON.stringify({cast:read(),settings:JSON.parse(localStorage.getItem('nanglung.settings.v1'))},null,2);};
+function gesture(event,cancel,pointerType="mouse"){
+ event.preventDefault();try{
+ const before=read(),actor=before.members.find(m=>m.id==='initial-Left'),p=placement(before,actor),anchor=stageAnchor(actor.pose,p),character=getCharacter(actor.character),depth={start:character.head.anchor[1]+20,end:character.footY};
+ const sample=depthPoint(0,-90,depth),angle=actor.pose.tilt+p.lean,dx=sample.x*p.scale*actor.pose.facing,dy=sample.y*p.scale;
+ const x=anchor.x+dx*Math.cos(angle)-dy*Math.sin(angle),y=anchor.baseline-depthPoint(0,character.footY,depth).y*p.scale+dx*Math.sin(angle)+dy*Math.cos(angle);
+ const canvas=frame.contentDocument.getElementById('stage'),r=canvas.getBoundingClientRect(),s=Math.min(r.width/1280,r.height/720),client=(x,y)=>({clientX:r.left+(r.width-1280*s)/2+x*s,clientY:r.top+(r.height-720*s)/2+y*s});
+ const start=client(x,y),end=client(x+(cancel?-400:960-anchor.x),y+(cancel?30:610-anchor.baseline));
+ const send=(type,point)=>canvas.dispatchEvent(new frame.contentWindow.PointerEvent(type,{...point,pointerId:event.pointerId,pointerType,isPrimary:true,button:0,buttons:type==='pointerup'?0:1,bubbles:true,cancelable:true}));
+ send('pointerdown',start);send('pointermove',end);
+ if(cancel==='pointercancel')send('pointercancel',end);
+ else if(cancel)canvas.dispatchEvent(new frame.contentWindow.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+ else send('pointerup',end);
+ const after=read(),moved=after.members.find(m=>m.id===actor.id),settings=JSON.parse(localStorage.getItem('nanglung.settings.v1'));
+ const checks=cancel?{cancelRestoresPosition:JSON.stringify(after)===JSON.stringify(before)}:{crossesToRight:moved.side==='Right',rightHandOnly:after.controls.Left===null&&after.controls.Right===actor.id,savedPosition:Math.abs(moved.position.x-.75)<.001&&moved.position.baseline===610,profilePreserved:settings.profiles.Left.calibrated===true};
+ result.textContent=JSON.stringify({status:Object.values(checks).every(Boolean)?'PASS':'FAIL',checks,cast:after},null,2);
+ }catch(error){result.textContent='FAIL: '+error.stack;}
+}
+document.getElementById('touch').onpointerdown=event=>gesture(event,false,'touch');document.getElementById('cancel-pointer').onpointerdown=event=>gesture(event,'pointercancel');
+document.getElementById('drag').onpointerdown=event=>gesture(event,false);document.getElementById('cancel').onpointerdown=event=>gesture(event,true);
+</script></html>

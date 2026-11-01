@@ -10,8 +10,8 @@ export function renderWorkspace(settings: Settings) {
   <main class="studio-grid">
     <section class="stage-column" aria-label="เวทีและตัวควบคุม">
       <div class="stage-shell" id="stage-shell">
-        <canvas id="stage" tabindex="0" aria-label="เวทีหนังตะลุง" aria-description="คลิกตัวละครเพื่อเลือกควบคุม หรือใช้ปุ่มลูกศรซ้ายขวาเพื่อสลับตัว"></canvas>
-        <div class="stage-hint">${icon("pointer")} คลิกตัวหนังเพื่อเลือกเชิด</div>
+        <canvas id="stage" tabindex="0" aria-label="เวทีหนังตะลุง" aria-description="ลากตัวละครเพื่อจัดตำแหน่งและย้ายฝั่ง ซ้ายใช้มือซ้าย ขวาใช้มือขวา คลิกหรือลูกศรเพื่อเลือกตัว และกด Escape เพื่อยกเลิกการลาก"></canvas>
+        <div class="stage-hint">${icon("pointer")} ลากเพื่อจัดตำแหน่ง · คลิกเพื่อเลือกเชิด</div>
         <div class="stage-paused" id="stage-paused" hidden><span>${icon("pause")} พักการเชิด</span></div>
         <button class="exit-stage" id="exit-stage">${icon("close")} ออกจากเวที</button>
       </div>

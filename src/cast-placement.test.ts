@@ -14,14 +14,13 @@ describe("actor display side", () => {
     const left = cast.members.filter(m => m.side === "Left").map(m => placement(cast, m).x);
     expect(Math.max(...left) - Math.min(...left)).toBeLessThan(.25);
   });
-  it("moves one actor without changing hand ownership, count or other poses", () => {
+  it("moves an actor's binding to its new side while preserving count and other poses", () => {
     const cast = initialCast(defaultSettings());
     cast.members[0].pose.mouth = 0.8;
-    const controls = { ...cast.controls },
-      other = structuredClone(cast.members[1]);
+    const other = structuredClone(cast.members[1]);
     expect(moveMember(cast, cast.members[0].id, "Right")).toBe(true);
     expect(cast.members).toHaveLength(2);
-    expect(cast.controls).toEqual(controls);
+    expect(cast.controls).toEqual({Left:null,Right:"initial-Left"});
     expect(cast.members[0].side).toBe("Right");
     expect(cast.members[0].pose.mouth).toBe(0.8);
     expect(cast.members[0].pose.facing).toBe(-1);

@@ -1,4 +1,4 @@
-import { actorPoint, stagePoint, type StageTransform } from "./stage-geometry";
+import { actorPoint, stagePoint, stageAnchor, type StagePlacement, type StageTransform } from "./stage-geometry";
 import type { Point, Pose, Settings } from "./core";
 import { PuppetTurn } from "./puppet-turn";
 import { depthPoint, PuppetDepthRenderer } from "./puppet-depth";
@@ -153,7 +153,7 @@ export interface StageActor {
   key: string;
   pose: Pose;
   character: CharacterId;
-  placement?: { x:number; baseline:number; scale:number; lean:number };
+  placement?: StagePlacement;
   control?: "Left" | "Right";
   selected?: boolean;
 }
@@ -195,8 +195,8 @@ export class StageRenderer {
     return null;
   }
   draw(pose:Pose,settings:Settings) {this.drawActors([{key:"single",pose,character:settings.character}],settings);}
-  drawActors(actors:StageActor[],settings:Settings,paused=false,now=performance.now()) {
-    const frameSignature=JSON.stringify([artworkRevision,actors,settings.theme,settings.rods,settings.accessories,paused]);
+  drawActors(actors:StageActor[],settings:Settings,paused=false,now=performance.now(),dragging?:string) {
+    const frameSignature=JSON.stringify([artworkRevision,actors,settings.theme,settings.rods,settings.accessories,paused,dragging]);
     if(frameSignature===this.frameSignature&&!this.transitionUntil&&(!this.turning||paused))return;
     this.frameSignature=frameSignature;
     this.turning=false;
@@ -206,6 +206,12 @@ export class StageRenderer {
     for(const key of this.actors.keys())if(!liveKeys.has(key))this.actors.delete(key);
     const scene=this.scene.getContext("2d")!;
     scene.clearRect(0,0,1280,720);scene.drawImage(this.background,0,0);
+    if(dragging) {
+      scene.save();scene.strokeStyle="#fff0cf80";scene.lineWidth=2;scene.setLineDash([10,10]);
+      scene.beginPath();scene.moveTo(640,125);scene.lineTo(640,665);scene.stroke();
+      scene.font="18px Thonburi,sans-serif";scene.fillStyle="#443024";scene.textAlign="center";
+      scene.fillText("ฝั่งซ้าย · มือซ้าย",320,125);scene.fillText("ฝั่งขวา · มือขวา",960,125);scene.restore();
+    }
     this.targets=[];
     for(const actor of actors) {
       let buffers=this.actors.get(actor.key);
@@ -236,8 +242,7 @@ export class StageRenderer {
       }
       const placement=actor.placement;
       const scale=placement?.scale??1.46;
-      const x=(placement?placement.x+(pose.x-.5)*.45:pose.x)*1280;
-      const baseline=placement?placement.baseline+(pose.y-.53)*360:pose.y*720+365;
+      const {x,baseline}=stageAnchor(pose,placement);
       const transform:StageTransform={x,y:baseline-depthPoint(0,character.footY,depth).y*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0),horizontalScale:turn.horizontalScale,shear:turn.shear,depth};
       const draw=(buffer:HTMLCanvasElement,def:CharacterDefinition,alpha:number)=>{
         const visibleWidth=Math.abs(turn.horizontalScale)<.006?(turn.horizontalScale<0?-.006:.006):turn.horizontalScale;

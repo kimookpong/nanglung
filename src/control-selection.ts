@@ -17,13 +17,9 @@ export function checkHandControl(
     !!memberForHand(cast, other);
   if (enabled) {
     if (!memberForHand(cast, side)) {
-      const available = cast.members.filter(
-        (member) => !otherEnabled || member.id !== cast.controls[other],
-      );
-      const member =
-        available.find((member) => member.side === side) ?? available[0];
+      const member = cast.members.find(member => member.side === side);
       if (!member) return { accepted: false, paused };
-      selectMember(cast, member.id, side, false);
+      selectMember(cast, member.id, side);
     }
     settings.hand = side;
     settings.handMode = otherEnabled ? "dual" : "single";
