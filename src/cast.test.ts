@@ -5,9 +5,9 @@ import { actorPoint, stagePoint } from "./stage-geometry";
 
 describe("persistent stage cast",()=>{
   it("migrates the saved pair without changing hand profiles or anatomical ownership",()=>{
-    const settings=defaultSettings();settings.characters.Left="nunui";settings.profiles.Left.calibrated=true;
+    const settings=defaultSettings();settings.characters.Left="thanathorn";settings.profiles.Left.calibrated=true;
     const cast=parseCast(null,settings);
-    expect(memberForHand(cast,"Left")?.character).toBe("nunui");
+    expect(memberForHand(cast,"Left")?.character).toBe("thanathorn");
     expect(memberForHand(cast,"Right")?.character).toBe("theng");
     expect(settings.profiles.Left.calibrated).toBe(true);
     expect(cast.members.map(m=>m.pose.facing)).toEqual([1,-1]);

@@ -1,0 +1,13 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>Removed cast migration check</title><style>body{margin:16px;font:14px sans-serif;background:#eee5d5}iframe{width:100%;height:520px;border:0}button{padding:8px;margin:0 8px 12px 0}pre{white-space:pre-wrap}</style><h1>ตรวจการย้ายฉากที่มีตัวละครถูกนำออก</h1><p>ใช้บน origin ทดสอบแยกเท่านั้น ปุ่มนี้จะเขียนฉากทดสอบและการตั้งค่าในเบราว์เซอร์</p><button id="mixed">ทดสอบฉากผสม</button><button id="all">ทดสอบฉากที่นำออกทั้งหมด</button><pre id="result">ยังไม่เริ่ม</pre><iframe id="studio" title="สตูดิโอทดสอบการย้ายข้อมูล"></iframe><script type="module">
+import {defaultSettings,restPose} from '/src/core.ts';
+const removed=['nunui','sikaew','yodthong','khwanmuang'],frame=document.getElementById('studio'),result=document.getElementById('result');
+function run(mixed){
+ const settings=defaultSettings();settings.profiles.Left.calibrated=true;settings.hand='Left';settings.handMode='dual';settings.character='nunui';settings.characters={Left:'nunui',Right:'thanathorn'};
+ const members=removed.map((character,i)=>({id:'retired-'+i,character,side:'Left',pose:restPose()}));
+ if(mixed)members.push({id:'ek',character:'thanathorn',side:'Right',pose:{...restPose(),mouth:.7}});
+ localStorage.setItem('nanglung.settings.v1',JSON.stringify(settings));localStorage.setItem('nanglung.cast.v1',JSON.stringify({version:1,members,controls:{Left:'retired-0',Right:mixed?'ek':'retired-1'}}));
+ frame.onload=()=>{const cast=JSON.parse(localStorage.getItem('nanglung.cast.v1')),saved=JSON.parse(localStorage.getItem('nanglung.settings.v1'));const checks={retiredRemoved:!cast.members.some(m=>removed.includes(m.character)),expectedMembers:cast.members.length===(mixed?1:0),bindings:cast.controls.Left===null&&cast.controls.Right===(mixed?'ek':null),profile:saved.profiles.Left.calibrated===true,survivingPose:!mixed||cast.members[0].pose.mouth===.7};result.textContent=JSON.stringify({status:Object.values(checks).every(Boolean)?'PASS':'FAIL',checks,cast},null,2);};
+ frame.src='/?migration-check='+Date.now();
+}
+document.getElementById('mixed').onclick=()=>run(true);document.getElementById('all').onclick=()=>run(false);
+</script></html>

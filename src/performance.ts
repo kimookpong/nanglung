@@ -46,30 +46,6 @@ export function demoPerformance(id: CharacterId, t: number): DemoPerformance {
     v.leftArm = speaking ? .15 + wave(t+1, 1)*.22 : .12;
     v.head = .12*wave(t, 1.6);
     result.angle = .018*Math.sin(t);
-  } else if (id === "nunui") {
-    const phase = t % 9,
-      speaking = phase > 3 && phase < 7;
-    v.mouth = speaking ? 0.7 * wave(t, 4) : 0;
-    v.rightArm = speaking ? 0.2 + 0.26 * wave(t, 1.7) : 0.13;
-    v.leftArm = 0.12;
-    v.head = speaking ? 0.15 + 0.25 * wave(t, 3) : 0.38 + 0.15 * wave(t, 1.1);
-    result.y += 0.025 * wave(t, 1.2);
-    result.angle = 0.025 * Math.sin(t);
-  } else if (id === "sikaew") {
-    const phase = t % 8;
-    v.rightArm = phase < 2.5 ? 0.68 : 0.18;
-    v.leftArm = 0.16;
-    v.mouth = phase > 2.5 && phase < 5.5 ? 0.6 * wave(t, 4.6) : 0;
-    v.head = 0.05 * wave(t, 1.4);
-  } else if (id === "yodthong") {
-    const phase = t % 9,
-      retreat = phase > 3 && phase < 5;
-    v.mouth = retreat ? 0 : 0.85 * wave(t, 6.5);
-    v.rightArm = retreat ? 0.13 : 0.3 + 0.52 * wave(t, 2.3);
-    v.leftArm = retreat ? 0.16 : 0.14 + 0.38 * wave(t + 1, 2);
-    v.head = retreat ? 0.65 : 0.17 * wave(t, 2);
-    result.x -= retreat ? 0.11 : 0;
-    result.angle = retreat ? -0.12 : 0.045 * Math.sin(t);
   } else {
     const phase = t % 10;
     v.rightArm = phase < 3 ? 0.47 : 0.22;

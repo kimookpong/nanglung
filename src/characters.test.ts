@@ -34,10 +34,10 @@ describe("character library", () => {
     expect(prayut.fullName).toContain("ตัวละครล้อเลียน");
     expect(defaultSettings().characters).toEqual({ Right: "theng", Left: "prayut" });
     const old = defaultSettings();
-    old.characters.Left = "nunui";
+    old.characters.Left = "thanathorn";
     old.profiles.Left.calibrated = true;
     const restored = parseSettings(JSON.parse(JSON.stringify(old)));
-    expect(restored.characters.Left).toBe("nunui");
+    expect(restored.characters.Left).toBe("thanathorn");
     expect(restored.profiles.Left.calibrated).toBe(true);
     const svg = characterSvg(prayut);
     expect(svg).toContain('/characters/artwork/prayut.png');
@@ -51,11 +51,10 @@ describe("character library", () => {
       expect(c.arms.right.art?.upper.image?.src).toBe(c.body.image?.src);
       const previous = defaultSettings();
       previous.profiles.Left.calibrated = true;
-      const restored = parseSettings({...previous, hand:"Right", character:c.id, characters:{Right:c.id,Left:"nunui"}});
-      expect(restored.characters).toEqual({Right:c.id,Left:"nunui"});
+      const restored = parseSettings({...previous, hand:"Right", character:c.id, characters:{Right:c.id,Left:"thanathorn"}});
+      expect(restored.characters).toEqual({Right:c.id,Left:"thanathorn"});
       expect(restored.profiles.Left.calibrated).toBe(true);
     }
-    expect(CHARACTERS.find(c => c.id === "anutin")!.name).not.toBe(CHARACTERS.find(c => c.id === "nunui")!.name);
   });
   it("preserves the reference colors and attaches Theng's ornaments to the moving pieces", () => {
     const theng = CHARACTERS.find(c => c.id === "theng")!;
@@ -169,8 +168,8 @@ describe("character library", () => {
     old.profiles.Left.calibrated = true;
     old.hand = "Left";
     old.assignments.reverse();
-    const restored = parseSettings({ ...old, character: "nunui" });
-    expect(restored.character).toBe("nunui");
+    const restored = parseSettings({ ...old, character: "thanathorn" });
+    expect(restored.character).toBe("thanathorn");
     expect(restored.profiles.Left.calibrated).toBe(true);
     expect(restored.assignments).toEqual(old.assignments);
     expect(restored.hand).toBe("Left");

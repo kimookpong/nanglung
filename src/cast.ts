@@ -2,6 +2,12 @@ import { isCharacterId, type CharacterId } from "./characters";
 import { clamp, restPose, type HandSide, type Pose, type Settings } from "./core";
 
 export const MAX_CAST = 12;
+// Recognize retired records only to remove them from saved stages during migration.
+const retiredCharacters = new Set(["nunui", "sikaew", "yodthong", "khwanmuang"]);
+export function hasRetiredCastMembers(value: unknown): boolean {
+  const members=(value as Partial<CastState>|null)?.members;
+  return Array.isArray(members)&&members.some(raw=>raw&&retiredCharacters.has(raw.character));
+}
 export interface CastMember { id: string; character: CharacterId; side: HandSide; pose: Pose }
 export interface CastState { version: 1; members: CastMember[]; controls: Record<HandSide, string | null> }
 export function initialCast(settings: Settings): CastState {
@@ -21,17 +27,18 @@ export function parseCast(value: unknown, settings: Settings): CastState {
   if (!value || typeof value!=="object") return initialCast(settings);
   const input=value as Partial<CastState>;
   if(input.version!==1||!Array.isArray(input.members))return initialCast(settings);
+  const hasRetiredMembers=hasRetiredCastMembers(input);
   const members:CastMember[]=[],ids=new Set<string>();
   for(const raw of input.members.slice(0,MAX_CAST)) {
     if(!raw||typeof raw.id!=="string"||!/^[-\w]{1,80}$/.test(raw.id)||ids.has(raw.id)||!isCharacterId(raw.character))continue;
     const side=raw.side==="Right"?"Right":"Left";
     members.push({id:raw.id,character:raw.character,side,pose:safePose(raw.pose,side)});ids.add(raw.id);
   }
-  if(!members.length)return input.members.length===0?{version:1,members:[],controls:{Left:null,Right:null}}:initialCast(settings);
+  if(!members.length)return input.members.length===0||hasRetiredMembers?{version:1,members:[],controls:{Left:null,Right:null}}:initialCast(settings);
   const valid=(id:unknown)=>typeof id==="string"&&ids.has(id)?id:null;
   const Left=valid(input.controls?.Left),Right=valid(input.controls?.Right);
   const controls={Left,Right:Right===Left?null:Right};
-  if(!controls.Left&&!controls.Right&&!(input.controls?.Left===null&&input.controls?.Right===null))controls[settings.hand]=members[0].id;
+  if(!controls.Left&&!controls.Right&&!hasRetiredMembers&&!(input.controls?.Left===null&&input.controls?.Right===null))controls[settings.hand]=members[0].id;
   return {version:1,members,controls};
 }
 export function memberForHand(cast:CastState,side:HandSide) { return cast.members.find(m=>m.id===cast.controls[side]); }

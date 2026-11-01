@@ -82,22 +82,22 @@ describe("independent hand slots", () => {
 
 describe("two-hand settings", () => {
   it("migrates an existing single-hand character and keeps its calibration", () => {
-    const legacy = { ...defaultSettings(), character: "sikaew", hand: "Left", characters: undefined, handMode: undefined };
+    const legacy = { ...defaultSettings(), character: "prawit", hand: "Left", characters: undefined, handMode: undefined };
     legacy.profiles.Left.calibrated = true;
     const settings = parseSettings(legacy);
-    expect(settings.characters.Left).toBe("sikaew");
-    expect(settings.character).toBe("sikaew");
+    expect(settings.characters.Left).toBe("prawit");
+    expect(settings.character).toBe("prawit");
     expect(settings.handMode).toBe("single");
     expect(settings.profiles.Left.calibrated).toBe(true);
   });
   it("persists different characters and applies the matching hand profile", () => {
     const settings = dual();
-    settings.characters = { Left: "khwanmuang", Right: "yodthong" };
+    settings.characters = { Left: "anutin", Right: "thaksin" };
     settings.profiles.Left.calibrated = true;
     const restored = parseSettings(JSON.parse(JSON.stringify(settings)));
     expect(restored.characters).toEqual(settings.characters);
     expect(restored.handMode).toBe("dual");
-    expect(handSettings(restored, "Left").character).toBe("khwanmuang");
+    expect(handSettings(restored, "Left").character).toBe("anutin");
     expect(handSettings(restored, "Left").profiles.Left.calibrated).toBe(true);
     expect(handSettings(restored, "Right").profiles.Right.calibrated).toBe(false);
   });

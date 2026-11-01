@@ -24,6 +24,7 @@ import { checkHandControl } from "./control-selection";
 import { HandEnsemble, activeHands, HAND_SIDES } from "./ensemble";
 import {
   initialCast,
+  hasRetiredCastMembers,
   memberForHand,
   moveMember,
   parseCast,
@@ -53,11 +54,11 @@ try {
 }
 
 let cast: CastState;
+let migrateRetiredCast = false;
 try {
-  cast = parseCast(
-    JSON.parse(localStorage.getItem("nanglung.cast.v1") ?? "null"),
-    settings,
-  );
+  const storedCast = JSON.parse(localStorage.getItem("nanglung.cast.v1") ?? "null");
+  migrateRetiredCast = hasRetiredCastMembers(storedCast);
+  cast = parseCast(storedCast, settings);
 } catch {
   cast = initialCast(settings);
 }
@@ -1010,6 +1011,7 @@ window.addEventListener("storage", (event) => {
     updateLabels();
 
     updateCameraUI();
+    if (hasRetiredCastMembers(value)) save();
   } catch {
     /* Ignore malformed values from another tab. */
   }
@@ -1025,6 +1027,7 @@ for (const event of ["input", "change", "pointerup", "keyup"] as const)
   });
 updateLabels();
 updateCameraUI();
+if (migrateRetiredCast) save();
 
 requestAnimationFrame(frame);
 if (storageUnavailable)
