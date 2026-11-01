@@ -1,12 +1,16 @@
 import type { CharacterDefinition, Graphic, XY } from "./characters";
-import { THANATHORN_BACKGROUND } from "./thanathorn-mask";
+import CUTS from "./puppet-cuts.json";
+import SPRITES from "./puppet-sprites.json";
 
-// The user's PNGs are the actual artwork. Clip stencils separate their existing
-// pieces; one affine projection keeps the texture aligned across every joint.
+// The user's PNGs are the actual artwork. scripts/cut-puppet-sprites.py cuts them
+// along src/puppet-cuts.json into outlined sprites; one affine projection per
+// piece keeps every sprite aligned to the original image across the joints.
 type Art=Pick<CharacterDefinition,"body"|"cloth"|"legs"|"head"|"arms"|"footY"|"viewBox"|"decorations">;
 type Projection={origin?:XY;angle?:number;side?:1|-1};
 type ArmSource={shoulder:XY;elbow:XY;wrist:XY;upper:string;lower:string;hand:string};
-type Source={id:string;head:string;jaw:string;headPivot:XY;jawPivot:XY;body:string;point:ArmSource;palm:ArmSource;background?:string};
+type Source={id:PuppetId;head:string;jaw:string;headPivot:XY;jawPivot:XY;body:string;point:ArmSource;palm:ArmSource};
+type PuppetId=keyof typeof SPRITES;
+type Box={x:number;y:number;w:number;h:number};
 const SCALE=.285,ORIGIN:XY=[535,1030];
 function matrix(p:Projection={}) {
   const [ox,oy]=p.origin??ORIGIN,a=p.angle??0,s=p.side??-1;
@@ -24,96 +28,35 @@ function path(data:string,p:Projection={}) {
     return command+out.join(" ")+" ";
   }).trim();
 }
-function piece(id:string,outline:string,p:Projection={},exclude:string[]=[],background?:string):Graphic {
-  return {path:path(outline,p),image:{src:`/characters/artwork/${id}.png`,width:1024,height:1536,matrix:matrix(p)},exclude:[...exclude,...(background?[background]:[])].map(e=>path(e,p))};
+function piece(id:PuppetId,name:string,p:Projection={}):Graphic {
+  const {x,y,w,h}=(SPRITES[id] as Record<string,Box>)[name],[a,b,c,d,e,f]=matrix(p);
+  return {path:path(`M${x} ${y}L${x+w} ${y}L${x+w} ${y+h}L${x} ${y+h}Z`,p),
+    image:{src:`/characters/sprites/${id}-${name}.webp`,width:w,height:h,matrix:[a,b,c,d,e+a*x+c*y,f+b*x+d*y]}};
 }
-function arm(id:string,source:ArmSource,side:1|-1,rest:number,background?:string):CharacterDefinition["arms"]["right"] {
+function arm(id:PuppetId,key:"point"|"palm",source:ArmSource,side:1|-1,rest:number,raised:XY):CharacterDefinition["arms"]["right"] {
   const {shoulder,elbow,wrist}=source;
   const a=Math.atan2(elbow[1]-shoulder[1],-side*(elbow[0]-shoulder[0]));
   const f=Math.atan2(wrist[1]-elbow[1],-side*(wrist[0]-elbow[0]));
   const project=(origin:XY,angle:number):Projection=>({origin,angle,side:side===1?-1:1});
-  const end=-1.1,elbowEnd=-.55;
+  const [end,elbowEnd]=raised;
   return {shoulder:point(...shoulder),side,upper:Math.hypot(elbow[0]-shoulder[0],elbow[1]-shoulder[1])*SCALE,
     lower:Math.hypot(wrist[0]-elbow[0],wrist[1]-elbow[1])*SCALE,width:12,hand:side===1?"point":"palm",
     shoulderAngles:[(a-rest*end)/(1-rest),end],elbowAngles:[(f-a-rest*elbowEnd)/(1-rest),elbowEnd],
-    art:{upper:piece(id,source.upper,project(shoulder,a),[],background),lower:piece(id,source.lower,project(elbow,f),[],background),hand:piece(id,source.hand,project(wrist,f),[],background)}};
+    art:{upper:piece(id,`${key}-upper`,project(shoulder,a)),lower:piece(id,`${key}-lower`,project(elbow,f)),hand:piece(id,`${key}-hand`,project(wrist,f))}};
 }
+// The pointing arm is in front of the face: it rises forward to a raised
+// finger out ahead of the nose instead of sweeping across the face.
+const POINT_RAISED:XY=[-.2,-.6],PALM_RAISED:XY=[-1.1,-.55];
 function puppet(s:Source):Art {
-  const exclusions=[s.head,s.point.upper,s.point.lower,s.point.hand,s.palm.upper,s.palm.lower,s.palm.hand];
-  return {footY:143,viewBox:"-235 -310 470 500",
-    body:piece(s.id,s.body,{},exclusions,s.background),cloth:{path:"",fill:"none"},legs:{path:"",fill:"none"},decorations:[],
-    head:{anchor:point(...s.headPivot),graphic:piece(s.id,s.head,{origin:s.headPivot},[s.jaw],s.background),eye:{path:""},
-      jawAnchor:point(...s.jawPivot,{origin:s.headPivot}),jaw:piece(s.id,s.jaw,{origin:s.jawPivot},[],s.background),jawLimit:.23,headLimit:.12},
-    arms:{right:arm(s.id,s.point,1,.16,s.background),left:arm(s.id,s.palm,-1,.12,s.background)},
+  return {footY:143,viewBox:PUPPET_VIEWBOX,
+    body:piece(s.id,"body"),cloth:{path:"",fill:"none"},legs:{path:"",fill:"none"},decorations:[],
+    head:{anchor:point(...s.headPivot),graphic:piece(s.id,"head",{origin:s.headPivot}),eye:{path:""},
+      jawAnchor:point(...s.jawPivot,{origin:s.headPivot}),jaw:piece(s.id,"jaw",{origin:s.jawPivot}),jawLimit:.23,headLimit:.12},
+    arms:{right:arm(s.id,"point",s.point,1,.16,POINT_RAISED),left:arm(s.id,"palm",s.palm,-1,.12,PALM_RAISED)},
   };
 }
+/** One frame for every puppet so cards and exported SVGs share a scale. */
+export const PUPPET_VIEWBOX="-240 -310 480 470";
 
-const thaksin:Source={id:"thaksin",headPivot:[510,420],jawPivot:[358,307],
-  head:"M205 265L212 202L244 163L264 98L280 55L342 14L467 0L564 22L612 63L637 129L638 200L602 286L558 325L579 350L487 444L416 405L357 397L289 403L249 391L244 354L249 337L241 320L245 286Z",
-  jaw:"M358 307Q338 330 291 339L253 334L243 355L246 386Q262 408 302 400L356 391L386 358L378 326Z",
-  body:"M414 403L579 340L659 386L709 469L757 597L801 719L842 839L938 959L968 1042L923 1063L797 960L780 873L759 900L774 1046L738 1171L789 1299L820 1447L813 1517L729 1536L631 1511L629 1463L678 1405L627 1282L597 1190L545 1140L519 1234L550 1368L565 1451L545 1480L448 1498L348 1497L301 1452L312 1402L400 1354L417 1303L380 1209L311 1123L289 1032L331 897L359 817L409 708L405 646L353 587L345 484L360 431Z",
-  point:{shoulder:[382,461],elbow:[363,647],wrist:[221,627],
-    upper:"M380 414Q411 416 411 463L400 585L398 648Q393 697 354 691L323 648L345 538L347 465Q347 424 380 414Z",
-    lower:"M359 610Q398 609 399 649Q401 704 356 728Q307 746 259 712L201 667L217 606L281 643L331 650Z",
-    hand:"M219 599L245 617L225 657L202 633Q152 641 121 606L101 561L72 531Q61 509 89 499L147 520L150 483Q156 452 174 473L191 508L227 549L235 585Z"},
-  palm:{shoulder:[665,425],elbow:[763,649],wrist:[837,841],
-    upper:"M659 387Q691 383 721 421L768 532L798 631Q808 672 767 695L735 665L693 558L648 490L632 441Q632 403 659 387Z",
-    lower:"M762 611Q798 609 809 654L831 748L857 836L807 863L781 776L746 696Q725 656 734 632Z",
-    hand:"M807 843L855 826L863 861L890 902L936 933L955 953L945 969L916 957L943 1002L933 1019L901 997L911 1040L894 1054L869 1014L859 1055L843 1054L827 1007L805 1008L785 983L785 936L797 885Z"},
-};
-const prayut:Source={id:"prayut",headPivot:[492,448],jawPivot:[352,314],
-  head:"M242 274L224 264L224 244L249 218L258 191L248 171L272 146L305 104L335 73L337 45L363 20L419 10L504 14L572 39L612 66L623 98L649 126L662 165L655 224L632 280L595 319L563 352L558 384L488 477L413 435L360 413L277 415L248 406L236 390L242 363L257 338L247 328L248 309L242 295Z",
-  jaw:"M352 314Q314 338 258 332L251 344L240 375L241 395L263 410L313 412L356 399L382 373L372 342Z",
-  body:"M389 423L439 432L489 475L559 382L622 399L703 407L748 475L792 601L824 731L874 906L934 961L978 1049L958 1095L917 1081L839 1017L816 929L785 940L753 1045L775 1167L818 1338L866 1422L871 1475L828 1508L739 1536L663 1526L620 1492L625 1460L681 1409L681 1367L640 1231L607 1167L553 953L510 1129L497 1278L516 1348L557 1410L563 1465L531 1485L442 1502L349 1495L303 1470L290 1446L310 1416L400 1370L432 1313L422 1194L389 1105L395 1017L414 909L399 890L446 795L431 700L352 645L338 548L344 473Z",
-  point:{shoulder:[383,528],elbow:[349,716],wrist:[211,646],
-    upper:"M381 487Q410 489 411 534L402 633L389 712L362 751L319 726L325 667L340 580L340 530Q343 495 381 487Z",
-    lower:"M349 675Q382 675 389 714L378 752L346 771L301 754L233 707L185 664L207 613L268 646L315 685Z",
-    hand:"M199 609L229 623L207 670L182 648L139 645L101 621L83 587L94 556L74 523L65 494L78 477L112 499L147 517L177 526L201 562L211 594Z"},
-  palm:{shoulder:[702,482],elbow:[797,675],wrist:[875,895],
-    upper:"M697 443Q730 437 754 480L790 565L830 659L830 704L790 731L741 699L716 611L666 530L655 485Q655 451 697 443Z",
-    lower:"M794 630Q836 628 847 676L868 765L910 895L830 940L790 880L751 811L718 720Q710 675 754 646Z",
-    hand:"M820 900L900 881L926 939L966 976L991 1035L981 1082L944 1110L900 1104L814 1052L813 971Z"},
-};
-const prawit:Source={id:"prawit",headPivot:[533,475],jawPivot:[334,326],
-  head:"M183 277L193 241L215 216L228 188L222 161L248 137L284 115L291 83L322 41L374 20L456 15L533 31L582 66L618 89L648 133L660 184L654 243L628 296L602 326L650 350L540 499L465 479L424 450L368 447L285 447L238 434L202 405L189 372L200 344L205 322Z",
-  jaw:"M334 326Q295 350 224 345L208 359L204 385L220 415L252 435L299 445L349 441L379 417L383 379L368 348Z",
-  body:"M445 443L481 474L537 499L645 342L714 386L770 439L807 542L847 636L885 748L940 890L975 967L1004 1038L992 1071L954 1081L904 1020L881 952L852 926L828 924L800 942L785 1050L816 1178L849 1324L889 1433L884 1495L837 1522L747 1536L676 1535L638 1506L642 1479L711 1422L713 1397L674 1270L639 1176L585 958L530 1128L514 1278L523 1352L557 1421L560 1478L523 1499L435 1512L331 1503L270 1481L246 1450L258 1419L345 1376L409 1327L418 1271L383 1156L371 1086L388 982L395 942L380 926L402 805L394 701L337 641L339 563L342 501L371 468Z",
-  point:{shoulder:[383,502],elbow:[348,716],wrist:[208,646],
-    upper:"M377 463Q411 465 416 503L406 598L385 702L367 749L326 751L308 709L328 604L336 521Q337 476 377 463Z",
-    lower:"M347 679Q385 679 389 717L373 757L339 771L300 756L228 704L175 660L198 606L255 637L308 681Z",
-    hand:"M190 604L225 623L205 669L180 648L140 648L101 632L74 610L69 581L80 556L49 522L29 487L37 458L62 452L108 477L151 498L180 527L193 565L198 594Z"},
-  palm:{shoulder:[726,419],elbow:[864,679],wrist:[944,895],
-    upper:"M717 380Q750 376 775 414L812 496L854 599L891 663L890 700L859 723L824 691L788 606L751 534L698 476L684 432Q680 397 717 380Z",
-    lower:"M859 637Q892 638 905 683L923 782L953 884L905 920L885 849L858 769L830 714Q817 674 831 651Z",
-    hand:"M907 900L953 883L959 927L977 957L1002 987L1010 1021L1001 1047L980 1032L985 1072L968 1086L945 1059L933 1081L915 1074L902 1034L883 1054L866 1035L880 990L886 949Z"},
-};
-const anutin:Source={id:"anutin",headPivot:[533,461],jawPivot:[368,320],
-  head:"M273 276L268 245L283 220L294 187L289 166L318 140L353 105L353 64L377 27L416 11L487 10L554 25L605 61L633 101L656 131L665 178L649 239L627 285L602 315L630 351L540 489L471 459L420 419L349 419L310 410L289 391L288 360L298 338L285 329L282 310Z",
-  jaw:"M368 320Q338 341 295 333L291 352L286 378Q289 407 319 415L366 421L412 404L430 374L414 343Z",
-  body:"M425 419L476 456L534 489L629 349L724 396L773 446L812 532L856 657L890 787L940 956L1005 1073L1014 1124L989 1154L933 1120L894 1039L871 999L846 989L789 1017L781 1115L817 1256L858 1398L875 1470L838 1511L751 1536L666 1527L631 1491L643 1458L703 1409L699 1361L651 1229L612 1175L552 1018L500 1164L499 1281L523 1370L560 1439L555 1491L512 1505L412 1512L314 1497L265 1468L253 1437L287 1404L378 1370L417 1329L427 1286L391 1181L368 1126L368 1043L402 930L412 839L426 770L405 684L341 628L338 558L342 496L370 458Z",
-  point:{shoulder:[380,499],elbow:[350,711],wrist:[203,640],
-    upper:"M373 457Q409 456 415 500L401 601L388 692L370 750L330 751L309 711L329 608L337 526Q336 473 373 457Z",
-    lower:"M350 674Q386 674 390 711L378 753L343 772L298 753L223 702L172 655L192 603L255 633L311 679Z",
-    hand:"M188 599L220 615L204 663L173 645L129 631L96 607L78 574L87 548L61 519L42 476L50 449L69 447L115 475L153 494L179 523L195 565Z"},
-  palm:{shoulder:[729,453],elbow:[859,706],wrist:[932,950],
-    upper:"M718 411Q755 405 781 452L815 539L851 630L889 688L889 724L858 752L827 715L786 633L753 562L700 500L688 463Q680 425 718 411Z",
-    lower:"M855 664Q890 662 903 710L916 811L953 945L908 974L879 887L855 802L827 741Q813 700 827 681Z",
-    hand:"M905 956L952 940L958 981L978 1013L1007 1049L1011 1080L1000 1104L978 1092L983 1131L966 1148L944 1121L935 1150L914 1145L898 1104L879 1122L860 1103L877 1056L882 1009Z"},
-};
-
-const thanathorn:Source={id:"thanathorn",background:THANATHORN_BACKGROUND,
-  headPivot:[520,540],jawPivot:[367,331],
-  head:"M205 0L710 0L710 365L601 438L597 456L520 558L443 499L431 453L225 455L214 390L226 321L208 274Z",
-  jaw:"M367 331Q350 349 289 350L265 347L244 365L243 403Q249 439 285 445L341 449L390 430L420 397L405 358Z",
-  body:"M430 465L462 484L520 555L599 435L650 449L681 468L695 530L706 626L711 701L700 742L727 792L719 829L759 908L779 999L780 1110L803 1177L830 1280L839 1351L873 1419L890 1470L885 1494L846 1518L765 1536L690 1536L637 1518L622 1480L626 1453L665 1421L697 1389L708 1367L702 1323L663 1246L622 1168L582 991L548 985L515 1109L524 1181L546 1275L540 1351L565 1406L568 1448L553 1474L504 1493L402 1497L305 1479L289 1451L287 1421L322 1401L374 1372L406 1341L424 1305L423 1249L402 1187L392 1140L395 1110L419 1034L450 965L491 866L493 834L477 818L471 794L482 764L470 733L446 684L422 646L418 581Z",
-  point:{shoulder:[383,532],elbow:[343,720],wrist:[204,627],
-    upper:"M375 490Q411 490 417 547L414 623L386 722L369 755L329 746L306 706L320 642L341 568L347 531Z",
-    lower:"M342 678Q380 676 385 716L379 750L352 774L320 773L280 752L219 710L173 664L187 609L230 628L292 675Z",
-    hand:"M187 601L222 623L207 664L174 650L130 639L87 608L80 561L44 510L42 475L64 465L113 489L170 509L196 549L206 583Z"},
-  palm:{shoulder:[709,496],elbow:[817,724],wrist:[902,915],
-    upper:"M697 446Q741 450 769 510L797 588L844 686L842 729L804 754L758 727L730 659L682 574L677 512Z",
-    lower:"M809 683Q850 678 868 738L887 823L931 926L885 958L854 902L821 824L784 754L783 718Z",
-    hand:"M879 907L930 894L939 948L970 982L1008 1027L1014 1070L994 1096L987 1114L956 1121L927 1113L915 1120L889 1112L884 1083L856 1078L855 1031L866 973Z"},
-};
-
-export const USER_PUPPETS={prayut:puppet(prayut),thaksin:puppet(thaksin),prawit:puppet(prawit),anutin:puppet(anutin),thanathorn:puppet(thanathorn)};
+const source=(id:PuppetId)=>CUTS[id] as unknown as Source;
+export const USER_PUPPETS={prayut:puppet(source("prayut")),thaksin:puppet(source("thaksin")),prawit:puppet(source("prawit")),anutin:puppet(source("anutin")),thanathorn:puppet(source("thanathorn"))};

@@ -20,9 +20,9 @@ describe("character library", () => {
     expect(thaksin.id).toBe("thaksin");
     expect(thaksin.fullName).toContain("ทักษิณ ชินวัตร");
     const svg = characterSvg(thaksin);
-    expect(svg).toContain('/characters/artwork/thaksin.png');
+    expect(svg).toContain('/characters/sprites/thaksin-body.webp');
     const scene = flatten(characterScene(thaksin, {mouth:1,head:.55,rightArm:1,leftArm:1}));
-    for(const name of ["right-arm-hand","right-arm-forearm","lower-jaw"])expect(scene.find(n=>n.name===name)?.graphic?.image?.src).toBe('/characters/artwork/thaksin.png');
+    for(const [name,sprite] of [["right-arm-hand","point-hand"],["right-arm-forearm","point-lower"],["lower-jaw","jaw"]])expect(scene.find(n=>n.name===name)?.graphic?.image?.src).toBe(`/characters/sprites/thaksin-${sprite}.webp`);
     const previous = defaultSettings();
     const restored = parseSettings({...previous, character:"thaksin", characters:{...previous.characters,Right:"thaksin"}});
     expect(restored.character).toBe("thaksin");
@@ -40,15 +40,15 @@ describe("character library", () => {
     expect(restored.characters.Left).toBe("thanathorn");
     expect(restored.profiles.Left.calibrated).toBe(true);
     const svg = characterSvg(prayut);
-    expect(svg).toContain('/characters/artwork/prayut.png');
+    expect(svg).toContain('/characters/sprites/prayut-head.webp');
   });
   it("keeps the named main cast first, original artwork and independent saved choices", () => {
     expect(CHARACTERS.slice(0,6).map(c => c.id)).toEqual(MAIN_CAST_IDS);
-    expect(CHARACTERS.slice(0,6).map(c => c.name)).toEqual(["เท่ง", "ไอยุทธ์", "แม้ว", "วิตร", "หนู", "เอก"]);
+    expect(CHARACTERS.slice(0,6).map(c => c.name)).toEqual(["ลุงเท่ง", "ลุงยุทธ์", "ลุงแม้ว", "ลุงวิตร", "ลุงหนู", "ลุงเอก"]);
     for (const c of CHARACTERS.slice(1,6)) {
-      expect(c.body.image?.src).toBe(`/characters/artwork/${c.id}.png`);
-      expect(c.body.exclude!.length).toBe(c.id === "thanathorn" ? 8 : 7);
-      expect(c.arms.right.art?.upper.image?.src).toBe(c.body.image?.src);
+      expect(c.body.image?.src).toBe(`/characters/sprites/${c.id}-body.webp`);
+      expect(c.body.exclude).toBeUndefined();
+      expect(c.arms.right.art?.upper.image?.src).toBe(`/characters/sprites/${c.id}-point-upper.webp`);
       const previous = defaultSettings();
       previous.profiles.Left.calibrated = true;
       const restored = parseSettings({...previous, hand:"Right", character:c.id, characters:{Right:c.id,Left:"thanathorn"}});
@@ -179,5 +179,17 @@ describe("character library", () => {
     expect(parseSettings({ ...old, character: undefined }).character).toBe(
       "theng",
     );
+  });
+  it("frames every puppet in one viewBox on a shared baseline", () => {
+    const frames = new Set(CHARACTERS.map(c => c.viewBox));
+    expect([...frames]).toEqual(["-240 -310 480 470"]);
+    for (const c of CHARACTERS) expect(Math.abs(c.footY - 143)).toBeLessThanOrEqual(2);
+  });
+  it("raises the pointing arm ahead of the face rather than across it", () => {
+    for (const c of CHARACTERS.slice(1)) {
+      const raised = armKinematics(c.arms.right, 1);
+      // The wrist stays forward of the head pivot by more than the face's depth.
+      expect(raised.wrist[0] - c.head.anchor[0]).toBeGreaterThan(55);
+    }
   });
 });

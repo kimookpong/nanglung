@@ -1,14 +1,14 @@
 import type { Action } from "./core";
 import { characterSvg, getCharacter, type CharacterId } from "./characters";
 
-// Inline SVG can share the original PNG with Canvas; SVG loaded through <img>
-// cannot load external images and would require a large embedded copy per tile.
+// Inline SVG can share the sprites with Canvas; SVG loaded through <img>
+// cannot load external images and would require an embedded copy per tile.
 export function characterPreview(id: CharacterId, prefix: string) {
   return characterSvg(getCharacter(id), undefined, prefix)
     .replace('role="img"', 'class="puppet-preview" aria-hidden="true"')
     .replaceAll(
-      'href="/characters/artwork/',
-      `href="${import.meta.env.BASE_URL}characters/artwork/`,
+      'href="/characters/sprites/',
+      `href="${import.meta.env.BASE_URL}characters/sprites/`,
     );
 }
 

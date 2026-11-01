@@ -13,7 +13,7 @@ describe("removed character migration", () => {
     expect(cast).toEqual({ version: 1, members: [], controls: { Left: null, Right: null } });
     expect(parseCast(JSON.parse(JSON.stringify(cast)), defaultSettings())).toEqual(cast);
     expect(catalogEntries(cast)).toHaveLength(6);
-    expect(CHARACTERS.map(c => c.name)).toEqual(["เท่ง", "ไอยุทธ์", "แม้ว", "วิตร", "หนู", "เอก"]);
+    expect(CHARACTERS.map(c => c.name)).toEqual(["ลุงเท่ง", "ลุงยุทธ์", "ลุงแม้ว", "ลุงวิตร", "ลุงหนู", "ลุงเอก"]);
     expect(retired.some(isCharacterId)).toBe(false);
   });
   it("preserves surviving actors, poses and bindings without selecting a replacement", () => {

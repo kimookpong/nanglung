@@ -1,0 +1,21 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><title>NangLung — Joint seams</title><style>body{background:#f3e7c9;color:#493e2e;font-family:Thonburi,Tahoma,sans-serif;margin:16px}h1{font-size:20px;margin:0 0 4px}p{font-size:12px;color:#8d7a5b;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}figure{margin:0;background:#fff6dc;border:1px solid #dbcfb9;border-radius:6px}figcaption{font-size:11px;padding:4px 6px}canvas{display:block;width:100%;height:auto}</style></head><body><h1>ตรวจรอยต่อข้อต่อและขอบชิ้น</h1><p>วาดด้วย paintCharacter ชุดเดียวกับเวที · แถวบนท่าพัก · แถวกลางแขน 50% · แถวล่างแขน ปาก และศีรษะ 100% · เส้นประคือความสูงมาตรฐาน</p><div class="grid" id="grid"></div><script type="module">
+import{CHARACTERS}from'/src/characters.ts';
+import{paintCharacter}from'/src/renderer.ts';
+import{restPose}from'/src/core.ts';
+const grid=document.getElementById('grid');
+const poses=[restPose(),{...restPose(),rightArm:.5,leftArm:.5,mouth:.5,head:.27},{...restPose(),rightArm:1,leftArm:1,mouth:1,head:.55}];
+const query=new URLSearchParams(location.search),cells=[],only=query.get('id'),onlyPose=query.get('pose'),zoom=Number(query.get('zoom')??1);
+if(only)grid.style.gridTemplateColumns=onlyPose?'1fr':'repeat(3,minmax(0,1fr))';
+for(const c of CHARACTERS.filter(c=>!only||c.id===only))for(const pose of poses.filter((_,i)=>onlyPose==null||i===Number(onlyPose))){
+  const figure=document.createElement('figure'),canvas=document.createElement('canvas');
+  canvas.width=520*zoom;canvas.height=640*zoom;if(zoom>1)canvas.style.width=`${520*zoom}px`;figure.append(canvas);
+  const caption=document.createElement('figcaption');caption.textContent=c.name;figure.append(caption);grid.append(figure);
+  cells.push({canvas,c,pose});
+}
+function draw(){for(const {canvas,c,pose} of cells){
+  const g=canvas.getContext('2d');g.setTransform(zoom,0,0,zoom,0,0);g.clearRect(0,0,520,640);g.save();g.translate(260,600-c.footY*1.1);g.scale(1.1,1.1);
+  paintCharacter(g,c,pose,'#26211c',false,true);g.restore();
+  g.save();g.strokeStyle='#a03d2a80';g.setLineDash([6,6]);g.beginPath();g.moveTo(0,600);g.lineTo(520,600);g.stroke();g.restore();
+}}
+draw();setInterval(draw,500);
+</script></body></html>
