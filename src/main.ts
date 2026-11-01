@@ -14,14 +14,8 @@ import {
 import { CameraTracker } from "./camera";
 import { StageRenderer, drawLandmarks, drawHands } from "./renderer";
 import { getCharacter, isCharacterId } from "./characters";
-import { demoPerformance } from "./performance";
 import { checkHandControl } from "./control-selection";
-import {
-  HandEnsemble,
-  activeHands,
-  handSettings,
-  HAND_SIDES,
-} from "./ensemble";
+import { HandEnsemble, activeHands, HAND_SIDES } from "./ensemble";
 import {
   addMember,
   initialCast,
@@ -131,33 +125,11 @@ settingTabs.forEach((button, index) => {
     selectSettingsTab(settingTabs[next].dataset.settingsTab!, true);
   });
 });
-let mode: "demo" | "live" = "demo";
 let cameraOn = false;
 let cameraLoading = false;
 let cameraToken = 0;
 let paused = false;
-let autoplay = false;
-let autoplayStarted = 0;
 let overlayVisible = true;
-function initialDemo(side: HandSide) {
-  const pose = memberForHand(cast, side)?.pose ?? restPose();
-  const values = {
-    mouth: pose.mouth,
-    rightArm: pose.rightArm,
-    leftArm: pose.leftArm,
-    head: pose.head / 0.55,
-    flip: 0,
-  };
-  return {
-    fingers: settings.assignments.map((a, i) => values[a] / settings.gain[i]),
-    x: 0.5 + (pose.x - 0.5) / 0.8,
-    y: 0.5 + (pose.y - 0.53) / 0.4,
-    tilt: pose.tilt,
-  };
-}
-let demos = { Left: initialDemo("Left"), Right: initialDemo("Right") };
-let demo = demos[settings.hand];
-const heldDemoKeys = new Map<string, HandSide>();
 let toastTimer: ReturnType<typeof setTimeout>;
 
 function notify(message: string) {
@@ -183,7 +155,7 @@ function save() {
 }
 function updateLabels() {
   active = ensemble.sessions[settings.hand];
-  demo = demos[settings.hand];
+
   settings.character = settings.characters[settings.hand];
   updateCharacter();
   updateHandChecks();
@@ -192,7 +164,7 @@ function updateLabels() {
   el("calibration-title").textContent =
     `ปรับเทียบมือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
   el("finger-description").textContent =
-    `${mode === "demo" ? "ทดลอง" : "สัญญาณ"}มือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
+    `สัญญาณมือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
   for (const side of HAND_SIDES) {
     el<HTMLSelectElement>("hand-side").querySelector<HTMLOptionElement>(
       `option[value="${side}"]`,
@@ -247,7 +219,7 @@ function updateCharacter() {
   el<HTMLInputElement>("accessories").checked = settings.accessories;
   el<HTMLCanvasElement>("stage").setAttribute(
     "aria-label",
-    `เวทีหนังตะลุง — ${character.name} ขยับตามมือหรือตัวควบคุมทดลอง`,
+    `เวทีหนังตะลุง — ${character.name} ขยับตามมือจากกล้อง`,
   );
   el("about-character-name").textContent = character.fullName ?? character.name;
   el("about-character-traits").textContent = character.traits;
@@ -284,7 +256,7 @@ function chooseCharacter(id: string | undefined) {
   member.character = id;
   settings.character = id;
   settings.characters[settings.hand] = id;
-  autoplayStarted = performance.now();
+
   // A held pinky must release before flipping the replacement puppet.
   active.controller.gesture.reset();
   save();
@@ -348,7 +320,6 @@ document
 for (const name of ["cast", "camera"] as const) {
   const tab = el<HTMLButtonElement>(`panel-${name}-tab`);
   tab.addEventListener("click", () => {
-    if (name === "camera") setMode("live");
     setControlPanel(name);
   });
   tab.addEventListener("keydown", (event) => {
@@ -362,7 +333,6 @@ for (const name of ["cast", "camera"] as const) {
           : name === "cast"
             ? "camera"
             : "cast";
-    if (next === "camera") setMode("live");
     setControlPanel(next, true);
   });
 }
@@ -411,7 +381,7 @@ function showFingerControls(show: boolean) {
   const button = el<HTMLButtonElement>("toggle-fingers");
   button.classList.toggle("active", show);
   button.setAttribute("aria-expanded", String(show));
-  button.setAttribute("aria-label", `${show ? "ซ่อน" : "แสดง"}ตัวควบคุมนิ้ว`);
+  button.setAttribute("aria-label", `${show ? "ซ่อน" : "แสดง"}สัญญาณนิ้ว`);
 }
 showFingerControls(!compactControls.matches);
 el("toggle-fingers").addEventListener("click", () => {
@@ -432,11 +402,6 @@ function bindCastHand(side: HandSide) {
     );
     ensemble.sessions[side].controller.setPaused(paused);
   }
-  demos[side] = initialDemo(side);
-  if (member)
-    ensemble.sessions[side].controller.fingers = demos[side].fingers.map(
-      (value, i) => Math.min(1, value * settings.gain[i]),
-    );
 }
 function syncCastSettings() {
   for (const side of HAND_SIDES) {
@@ -458,16 +423,13 @@ function selectActor(id: string) {
   );
   settings.hand = side;
   if (previousHand !== side || previousId !== id) {
-    for (const [key, hand] of heldDemoKeys)
-      demos[hand].fingers[Number(key) - 1] = 0;
-    heldDemoKeys.clear();
     if (side === previousHand || settings.handMode === "single")
       bindCastHand(side);
   }
   syncCastSettings();
   save();
   updateLabels();
-  syncDemoControls();
+
   drawTrackingOverlay();
 }
 function openCast() {
@@ -521,10 +483,9 @@ el("cast-next").addEventListener("click", () => {
 el("cast-control-hand").addEventListener("change", () => {
   settings.hand = el<HTMLSelectElement>("cast-control-hand").value as HandSide;
   active = ensemble.sessions[settings.hand];
-  demo = demos[settings.hand];
+
   updateLabels();
   save();
-  syncDemoControls();
 });
 el("cast-add").addEventListener("click", () => {
   const character = el<HTMLSelectElement>("cast-new-character").value;
@@ -574,7 +535,7 @@ el("cast-roster").addEventListener("click", (event) => {
   syncCastSettings();
   save();
   updateLabels();
-  syncDemoControls();
+
   renderCast();
 });
 el("stage").addEventListener("click", (event) => {
@@ -603,25 +564,7 @@ el("accessories").addEventListener("change", () => {
   settings.accessories = el<HTMLInputElement>("accessories").checked;
   save();
 });
-function updateModeUI() {
-  el("mode-demo").classList.toggle("active", mode === "demo");
-  el("mode-live").classList.toggle("active", mode === "live");
-  el("mode-demo").setAttribute("aria-pressed", String(mode === "demo"));
-  el("mode-live").setAttribute("aria-pressed", String(mode === "live"));
-  el("autoplay").hidden = mode !== "demo";
-  el("autoplay").innerHTML = autoplay
-    ? `${icon("pause")} หยุดตัวอย่าง`
-    : `${icon("play")} เล่นตัวอย่าง`;
-  el("finger-description").textContent =
-    `${mode === "demo" ? "ทดลอง" : "สัญญาณ"}มือ${settings.hand === "Left" ? "ซ้าย" : "ขวา"}`;
-  document.querySelector<HTMLElement>(".workspace")!.dataset.mode = mode;
-  for (const id of ["demo-x", "demo-y", "demo-tilt"])
-    el<HTMLInputElement>(id).disabled = mode !== "demo";
-  document
-    .querySelectorAll<HTMLInputElement>(".finger-input")
-    .forEach((input) => {
-      input.disabled = mode !== "demo";
-    });
+function updateCameraUI() {
   el("camera-empty").hidden = cameraOn;
   video.hidden = !cameraOn;
   el("toggle-overlay").hidden = !cameraOn;
@@ -644,12 +587,9 @@ function updateModeUI() {
     ? "ครั้งแรกอาจใช้เวลาสักครู่"
     : "หันฝ่ามือเข้ากล้อง ให้เห็นนิ้วครบ";
   el<HTMLButtonElement>("calibrate").disabled = !cameraOn || cameraLoading;
-  el("control-footer-note").textContent =
-    mode === "demo"
-      ? "ลองจังหวะการเชิดก่อนเริ่มแสดงจริง"
-      : cameraOn
-        ? "หันฝ่ามือเข้ากล้อง แล้วเลือกตัวละครที่ต้องการ"
-        : "เปิดกล้อง แล้วปรับเทียบมือก่อนเริ่มเชิด";
+  el("control-footer-note").textContent = cameraOn
+    ? "หันฝ่ามือเข้ากล้อง แล้วเลือกตัวละครที่ต้องการ"
+    : "เปิดกล้อง แล้วปรับเทียบมือก่อนเริ่มเชิด";
 }
 function setPause(value: boolean) {
   paused = value;
@@ -690,29 +630,16 @@ for (const side of HAND_SIDES) {
       notify("เพิ่มตัวละครอีกหนึ่งตัว เพื่อเชิดสองมือพร้อมกัน");
       return;
     }
-    autoplay = false;
-    for (const [key, hand] of heldDemoKeys)
-      demos[hand].fingers[Number(key) - 1] = 0;
-    heldDemoKeys.clear();
+
     ensemble.clear();
     syncCastSettings();
     for (const hand of HAND_SIDES) bindCastHand(hand);
     setPause(result.paused);
     save();
     updateLabels();
-    syncDemoControls();
-    updateModeUI();
+
+    updateCameraUI();
     drawTrackingOverlay();
-  });
-}
-function syncDemoControls() {
-  el<HTMLInputElement>("demo-x").value = String(demo.x * 100);
-  el<HTMLInputElement>("demo-y").value = String(demo.y * 100);
-  el<HTMLInputElement>("demo-tilt").value = String((demo.tilt * 180) / Math.PI);
-  FINGERS.forEach((finger, i) => {
-    el<HTMLInputElement>(`finger-${finger}`).value = String(
-      demo.fingers[i] * 100,
-    );
   });
 }
 function resetPose() {
@@ -721,14 +648,9 @@ function resetPose() {
   for (const member of cast.members)
     member.pose = { ...restPose(), facing: member.side === "Left" ? 1 : -1 };
   for (const side of HAND_SIDES) bindCastHand(side);
-  heldDemoKeys.clear();
-  demos = { Left: initialDemo("Left"), Right: initialDemo("Right") };
-  demo = demos[settings.hand];
-  paused = false;
-  el("stage-paused").hidden = true;
-  el("pause").innerHTML = icon("pause");
-  el("pause").setAttribute("aria-label", "พักการเชิด");
-  syncDemoControls();
+
+  setPause(false);
+
   save();
 }
 function drawTrackingOverlay() {
@@ -750,17 +672,7 @@ function stopCamera() {
   cameraLoading = false;
   ensemble.clear();
   drawTrackingOverlay();
-  updateModeUI();
-}
-function setMode(next: "demo" | "live") {
-  if (mode === next) return;
-  if (next === "demo") stopCamera();
-  mode = next;
-  autoplay = false;
-  ensemble.clear();
-  for (const side of HAND_SIDES) bindCastHand(side);
-  syncDemoControls();
-  updateModeUI();
+  updateCameraUI();
 }
 async function enumerateCameras() {
   try {
@@ -781,13 +693,12 @@ async function enumerateCameras() {
   }
 }
 async function startCamera() {
-  setMode("live");
   setControlPanel("camera");
   if (cameraLoading) return;
   const token = ++cameraToken;
   cameraLoading = true;
   el("camera-alert").hidden = true;
-  updateModeUI();
+  updateCameraUI();
   try {
     await tracker.start(
       el<HTMLSelectElement>("camera-device").value || undefined,
@@ -798,7 +709,7 @@ async function startCamera() {
     overlay.height = video.videoHeight || 480;
     cameraLoading = false;
     await enumerateCameras();
-    updateModeUI();
+    updateCameraUI();
     notify("กล้องพร้อมแล้ว หันฝ่ามือเข้ากล้อง และปรับเทียบมือก่อนเริ่มแสดง");
   } catch (error) {
     if (token !== cameraToken) return;
@@ -807,7 +718,7 @@ async function startCamera() {
     el("camera-error").textContent =
       error instanceof Error ? error.message : "เปิดกล้องไม่สำเร็จ";
     el("camera-alert").hidden = false;
-    updateModeUI();
+    updateCameraUI();
   }
 }
 
@@ -939,14 +850,6 @@ el("close-calibration").addEventListener("click", () =>
   calibrationDialog.close(),
 );
 
-el("mode-demo").addEventListener("click", () => {
-  setMode("demo");
-  setControlPanel("cast");
-});
-el("mode-live").addEventListener("click", () => {
-  setMode("live");
-  setControlPanel("camera");
-});
 el("start-camera").addEventListener("click", () => {
   if (cameraOn) stopCamera();
   else void startCamera();
@@ -957,28 +860,21 @@ el("camera-device").addEventListener("change", () => {
     void startCamera();
   }
 });
-el("autoplay").addEventListener("click", () => {
-  autoplay = !autoplay;
-  if (autoplay) autoplayStarted = performance.now();
-  if (paused) setPause(false);
-  updateModeUI();
-});
 el("pause").addEventListener("click", () => setPause(!paused));
 el("reset-pose").addEventListener("click", () => {
-  autoplay = false;
   resetPose();
-  updateModeUI();
+  updateCameraUI();
   notify("รีเซ็ตท่าทางแล้ว");
 });
 el("hand-mode").addEventListener("change", () => {
   settings.handMode =
     el<HTMLSelectElement>("hand-mode").value === "dual" ? "dual" : "single";
-  autoplay = false;
+
   ensemble.clear();
   for (const side of HAND_SIDES) bindCastHand(side);
   save();
   updateLabels();
-  updateModeUI();
+  updateCameraUI();
   drawTrackingOverlay();
   notify(
     settings.handMode === "dual"
@@ -989,13 +885,13 @@ el("hand-mode").addEventListener("change", () => {
 el("hand-side").addEventListener("change", () => {
   settings.hand = el<HTMLSelectElement>("hand-side").value as HandSide;
   active = ensemble.sessions[settings.hand];
-  demo = demos[settings.hand];
+
   if (settings.handMode === "single") {
     bindCastHand(settings.hand);
   }
   updateLabels();
   save();
-  syncDemoControls();
+
   drawTrackingOverlay();
 });
 el("mirror").addEventListener("change", () => {
@@ -1038,12 +934,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-theme]").forEach((b) =>
     updateLabels();
   }),
 );
-FINGERS.forEach((f, i) => {
-  el(`finger-${f}`).addEventListener("input", () => {
-    autoplay = false;
-    demo.fingers[i] = Number(el<HTMLInputElement>(`finger-${f}`).value) / 100;
-    updateModeUI();
-  });
+FINGERS.forEach((_, i) => {
   el(`gain-${i}`).addEventListener("input", () => {
     settings.gain[i] = Number(el<HTMLInputElement>(`gain-${i}`).value) / 100;
     save();
@@ -1062,26 +953,11 @@ FINGERS.forEach((f, i) => {
     notify("สลับหน้าที่นิ้วแล้ว แต่ละหน้าที่ยังคงมีนิ้วควบคุมหนึ่งนิ้ว");
   });
 });
-el("demo-x").addEventListener("input", () => {
-  autoplay = false;
-  demo.x = Number(el<HTMLInputElement>("demo-x").value) / 100;
-  updateModeUI();
-});
-el("demo-y").addEventListener("input", () => {
-  autoplay = false;
-  demo.y = Number(el<HTMLInputElement>("demo-y").value) / 100;
-  updateModeUI();
-});
-el("demo-tilt").addEventListener("input", () => {
-  autoplay = false;
-  demo.tilt = (Number(el<HTMLInputElement>("demo-tilt").value) * Math.PI) / 180;
-  updateModeUI();
-});
 el("reset-settings").addEventListener("click", () => {
   settings = defaultSettings();
   cast = initialCast(settings);
   resetPose();
-  updateModeUI();
+  updateCameraUI();
   save();
   updateLabels();
   notify("คืนค่าการตั้งค่าและล้างการปรับเทียบแล้ว");
@@ -1135,31 +1011,10 @@ document.addEventListener("keydown", (event) => {
     if (!event.repeat) setPause(!paused);
   }
   if (event.key.toLowerCase() === "r" && !event.repeat) {
-    autoplay = false;
     resetPose();
-    updateModeUI();
+    updateCameraUI();
   }
   if (event.key.toLowerCase() === "f" && !event.repeat) void fullscreen();
-  if (mode === "demo" && /^[1-5]$/.test(event.key)) {
-    event.preventDefault();
-    autoplay = false;
-    if (!heldDemoKeys.has(event.key))
-      heldDemoKeys.set(event.key, settings.hand);
-    demos[heldDemoKeys.get(event.key)!].fingers[Number(event.key) - 1] = 1;
-    updateModeUI();
-  }
-});
-document.addEventListener("keyup", (event) => {
-  const side = heldDemoKeys.get(event.key);
-  if (side) {
-    demos[side].fingers[Number(event.key) - 1] = 0;
-    heldDemoKeys.delete(event.key);
-  }
-});
-window.addEventListener("blur", () => {
-  for (const [key, side] of heldDemoKeys)
-    demos[side].fingers[Number(key) - 1] = 0;
-  heldDemoKeys.clear();
 });
 window.addEventListener("pagehide", () => {
   if (castDirty) save();
@@ -1174,50 +1029,16 @@ let previousFrame = performance.now(),
 function frame(now: number) {
   const dt = Math.min((now - previousFrame) / 1000, 0.1);
   previousFrame = now;
-  if (mode === "demo" && !paused) {
-    for (const [index, side] of activeHands(settings).entries()) {
-      const controls = demos[side],
-        character = settings.characters[side];
-      let fingers = controls.fingers,
-        x = controls.x,
-        y = controls.y,
-        angle = controls.tilt;
-      if (autoplay) {
-        const performance = demoPerformance(
-          character,
-          (now - autoplayStarted) / 1000 + index * 1.5,
-        );
-        fingers = settings.assignments.map(
-          (action) => performance.values[action],
-        );
-        x = 0.5 + (performance.x - 0.5) * 0.7;
-        y = performance.y;
-        angle = performance.angle;
-      }
-      ensemble.sessions[side].controller.ingest(
-        {
-          x,
-          y,
-          angle,
-          fingers: fingers.map((value, i) =>
-            Math.min(1, value * settings.gain[i]),
-          ),
-        },
-        now,
-        now,
-        handSettings(settings, side),
-        true,
-      );
-    }
-  }
-  for (const side of activeHands(settings))
-    ensemble.sessions[side].controller.tick(now, dt, settings.smoothing);
+  // Keep saved poses still while the camera is off; only real tracking advances them.
+  if (cameraOn)
+    for (const side of activeHands(settings))
+      ensemble.sessions[side].controller.tick(now, dt, settings.smoothing);
   for (const side of activeHands(settings)) {
     const member = memberForHand(cast, side);
     if (member) {
       const pose = ensemble.sessions[side].controller.pose;
       if (
-        (mode === "live" || autoplay) &&
+        cameraOn &&
         !document.hidden &&
         document.hasFocus() &&
         JSON.stringify(member.pose) !== JSON.stringify(pose)
@@ -1247,13 +1068,6 @@ function frame(now: number) {
       document
         .querySelector(`[data-finger="${i}"]`)
         ?.classList.toggle("engaged", value > 0.15);
-      if (
-        mode === "demo" &&
-        (autoplay || document.activeElement !== el(`finger-${FINGERS[i]}`))
-      )
-        el<HTMLInputElement>(`finger-${FINGERS[i]}`).value = String(
-          (autoplay ? value : demo.fingers[i]) * 100,
-        );
     });
     el("stage").setAttribute(
       "aria-label",
@@ -1307,8 +1121,7 @@ for (const side of HAND_SIDES) bindCastHand(side);
 setInterval(() => {
   // Only the foreground performance writes continuous poses. Idle preview tabs
   // must not overwrite a reset or selection made in another studio window.
-  if (!(cameraOn || autoplay) || document.hidden || !document.hasFocus())
-    return;
+  if (!cameraOn || document.hidden || !document.hasFocus()) return;
   const snapshot = JSON.stringify(cast);
   if (snapshot === savedCast) return;
   try {
@@ -1332,12 +1145,12 @@ window.addEventListener("storage", (event) => {
     cast = parseCast(value, settings);
     savedCast = JSON.stringify(cast);
     castDirty = false;
-    autoplay = false;
+
     syncCastSettings();
     for (const side of HAND_SIDES) bindCastHand(side);
     updateLabels();
-    syncDemoControls();
-    updateModeUI();
+
+    updateCameraUI();
   } catch {
     /* Ignore malformed values from another tab. */
   }
@@ -1352,8 +1165,8 @@ for (const event of ["input", "change", "pointerup", "keyup"] as const)
     }, 300);
   });
 updateLabels();
-updateModeUI();
-syncDemoControls();
+updateCameraUI();
+
 requestAnimationFrame(frame);
 if (storageUnavailable)
   notify("ใช้ค่าเริ่มต้น การตั้งค่าที่บันทึกไว้ไม่พร้อมใช้งาน");
