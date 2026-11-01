@@ -1,6 +1,7 @@
 import { actorPoint, stagePoint, type StageTransform } from "./stage-geometry";
 import type { Point, Pose, Settings } from "./core";
 import { PuppetTurn } from "./puppet-turn";
+import { depthPoint, PuppetDepthRenderer } from "./puppet-depth";
 import {
   armKinematics,
   characterScene,
@@ -167,8 +168,8 @@ export class StageRenderer {
   private context:CanvasRenderingContext2D;
   private background=layer();
   private scene=layer();
-  private focused=layer();
-  private focusMask=layer();
+  private rawPuppet=document.createElement("canvas");
+  private depthRenderer=new PuppetDepthRenderer();
   private logo=new Image();
   private theme="";
   private frameSignature="";
@@ -180,11 +181,7 @@ export class StageRenderer {
     this.context=canvas.getContext("2d")!;canvas.width=1280;canvas.height=720;
     this.logo.onload=()=>{this.frameSignature="";};
     this.logo.src=`${import.meta.env.BASE_URL}branding/nanglung-logo-transparent.png`;
-    const m=this.focusMask.getContext("2d")!;
-    const gradient=m.createRadialGradient(640,285,110,640,330,690);
-    gradient.addColorStop(0,"#fff");gradient.addColorStop(.35,"#fffffff0");
-    gradient.addColorStop(.65,"#ffffff55");gradient.addColorStop(1,"#ffffff00");
-    m.fillStyle=gradient;m.fillRect(0,0,1280,720);
+    this.rawPuppet.width=700;this.rawPuppet.height=800;
   }
   hitTest(clientX:number,clientY:number):string|null {
     const point=stagePoint(clientX,clientY,this.canvas.getBoundingClientRect());
@@ -219,6 +216,7 @@ export class StageRenderer {
         this.actors.set(actor.key,buffers);
       }
       const character=getCharacter(actor.character),pose=actor.pose;
+      const depth={start:character.head.anchor[1]+20,end:character.footY};
       const turn=buffers.turn.sample(pose.facing,now,paused);
       this.turning ||= turn.active;
       if(buffers.active!==character.id) {
@@ -227,22 +225,24 @@ export class StageRenderer {
         if(buffers.active)this.transitionUntil=now+240;
         buffers.active=character.id;buffers.changedAt=now;
       }
-      const signature=JSON.stringify([artworkRevision,actor.character,pose,settings.theme,settings.rods,settings.accessories]);
+      const signature=JSON.stringify([artworkRevision,actor.character,pose.mouth,pose.head,pose.rightArm,pose.leftArm,settings.theme,settings.rods,settings.accessories]);
       if(signature!==buffers.signature) {
-        for(const [buffer,rods] of [[buffers.puppet,settings.rods],[buffers.mask,false]] as const) {
+        for(const [buffer,rods] of [[this.rawPuppet,settings.rods],[buffers.mask,false]] as const) {
           const pc=buffer.getContext("2d")!;pc.clearRect(0,0,700,800);pc.save();pc.translate(350,400);
           paintCharacter(pc,character,pose,palette.ink,rods,settings.accessories);pc.restore();
         }
+        this.depthRenderer.render(this.rawPuppet,buffers.puppet,depth);
         buffers.signature=signature;
       }
       const placement=actor.placement;
       const scale=placement?.scale??1.46;
       const x=(placement?placement.x+(pose.x-.5)*.45:pose.x)*1280;
       const baseline=placement?placement.baseline+(pose.y-.53)*360:pose.y*720+365;
-      const transform:StageTransform={x,y:baseline-character.footY*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0),horizontalScale:turn.horizontalScale,shear:turn.shear};
+      const transform:StageTransform={x,y:baseline-depthPoint(0,character.footY,depth).y*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0),horizontalScale:turn.horizontalScale,shear:turn.shear,depth};
       const draw=(buffer:HTMLCanvasElement,def:CharacterDefinition,alpha:number)=>{
         const visibleWidth=Math.abs(turn.horizontalScale)<.006?(turn.horizontalScale<0?-.006:.006):turn.horizontalScale;
-        scene.save();scene.globalAlpha=alpha;scene.translate(x,baseline-def.footY*scale);
+        const defDepth={start:def.head.anchor[1]+20,end:def.footY};
+        scene.save();scene.globalAlpha=alpha;scene.translate(x,baseline-depthPoint(0,def.footY,defDepth).y*scale);
         scene.rotate(transform.angle);scene.transform(visibleWidth*scale,0,turn.shear*scale,scale,0,0);scene.drawImage(buffer,-350,-400);scene.restore();
       };
       const blend=Math.min(1,(now-buffers.changedAt)/240),eased=blend*blend*(3-2*blend);
@@ -252,11 +252,8 @@ export class StageRenderer {
     }
     const c=this.context;
     c.clearRect(0,0,1280,720);
-    // A sharp central field blends continuously into defocused cloth and figures.
-    c.save();c.filter="blur(7px)";c.drawImage(this.scene,-9,-5,1298,730);c.restore();
-    const f=this.focused.getContext("2d")!;f.clearRect(0,0,1280,720);f.drawImage(this.scene,0,0);
-    f.globalCompositeOperation="destination-in";f.drawImage(this.focusMask,0,0);f.globalCompositeOperation="source-over";
-    c.drawImage(this.focused,0,0);
+    // Focus belongs to each puppet, following its head-to-foot projection.
+    c.drawImage(this.scene,0,0);
     // The logo stays crisp; it is artwork with real alpha, without a sign board.
     if(this.logo.complete&&this.logo.naturalWidth>0) {
       const width=190,height=width*this.logo.naturalHeight/this.logo.naturalWidth;

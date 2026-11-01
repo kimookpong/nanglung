@@ -1,0 +1,19 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>Puppet depth projection check</title><style>body{margin:20px;font:16px sans-serif;background:#e9dfca;color:#34261e}main{display:flex;gap:20px}canvas{width:350px;height:400px;background:#cab795}pre{white-space:pre-wrap}</style><h1>ตรวจหัวคมชัด ไล่เบลอและขยายถึงขา</h1><main><canvas id="source" width="700" height="800"></canvas><canvas id="projected" width="700" height="800"></canvas></main><pre id="result">กำลังตรวจ…</pre><script type="module">
+import {PuppetDepthRenderer,depthPoint} from '/src/puppet-depth.ts';
+const source=document.getElementById('source'),target=document.getElementById('projected'),c=source.getContext('2d'),profile={start:-140,end:143};
+for(let x=285;x<415;x+=5){c.fillStyle=(x-285)%10?'white':'black';c.fillRect(x,100,5,444);}
+c.clearRect(330,380,40,40);
+const effect=new PuppetDepthRenderer();effect.render(source,target,profile);
+const s=c.getImageData(0,0,700,800).data,t=target.getContext('2d').getImageData(0,0,700,800).data;
+function contrast(p,y){const values=[];for(let x=310;x<390;x++)values.push(p[(y*700+x)*4]);return Math.max(...values)-Math.min(...values);}
+function width(y){let lo=700,hi=-1;for(let x=200;x<500;x++)if(t[(y*700+x)*4+3]>120){lo=Math.min(lo,x);hi=Math.max(hi,x);}return hi-lo+1;}
+let identical=true;for(let y=120;y<200;y++)for(let x=270;x<430;x++)for(let ch=0;ch<4;ch++)if(s[(y*700+x)*4+ch]!==t[(y*700+x)*4+ch])identical=false;
+const feetY=Math.floor(depthPoint(0,120,profile).y+400),checks=[
+{name:'head pixels stay unchanged',pass:identical},
+{name:'leg detail loses contrast progressively',pass:contrast(t,feetY)<contrast(t,340)&&contrast(t,340)<contrast(t,180)},
+{name:'lower silhouette expands by a small amount',pass:width(feetY)>width(180)&&width(feetY)<width(180)*1.15},
+{name:'leather cutout stays transparent',pass:t[(402*700+350)*4+3]<10},
+{name:'solid leather stays opaque through blur blends',pass:t[(340*700+350)*4+3]>250}
+];
+document.getElementById('result').textContent=JSON.stringify({status:checks.every(c=>c.pass)?'PASS':'FAIL',checks,contrast:[180,340,feetY].map(y=>contrast(t,y)),width:[width(180),width(feetY)]},null,2);
+</script></html>

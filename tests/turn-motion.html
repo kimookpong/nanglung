@@ -3,6 +3,7 @@ import {StageRenderer} from '/src/renderer.ts';
 import {defaultSettings,restPose} from '/src/core.ts';
 import {getCharacter} from '/src/characters.ts';
 import {PuppetTurn,PUPPET_TURN_MS} from '/src/puppet-turn.ts';
+import {depthPoint} from '/src/puppet-depth.ts';
 const settings=defaultSettings(),image=new Image();image.src=getCharacter('prayut').body.image.src;const warm=new StageRenderer(document.createElement('canvas'));warm.draw(restPose(),{...settings,character:'prayut'});await image.decode();await new Promise(requestAnimationFrame);
 const checks=[],canvases=[],renderers=[],actors=[];
 for(const phase of [0,.25,.5,.75,1]){
@@ -13,8 +14,9 @@ for(const phase of [0,.25,.5,.75,1]){
  canvases.push(canvas);renderers.push(renderer);actors.push(actor);
 }
 function pickPoint(canvas,actor,localX,localY,horizontal,shear){
- const r=canvas.getBoundingClientRect(),s=Math.min(r.width/1280,r.height/720),dx=1.46*(localX*horizontal+localY*shear),dy=1.46*localY;
- return [r.left+(r.width-1280*s)/2+(640+dx)*s,r.top+(r.height-720*s)/2+(765-getCharacter('prayut').footY*1.46+dy)*s];
+ const character=getCharacter('prayut'),depth={start:character.head.anchor[1]+20,end:character.footY},p=depthPoint(localX,localY,depth);
+ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/1280,r.height/720),dx=1.46*(p.x*horizontal+p.y*shear),dy=1.46*p.y;
+ return [r.left+(r.width-1280*s)/2+(640+dx)*s,r.top+(r.height-720*s)/2+(765-depthPoint(0,character.footY,depth).y*1.46+dy)*s];
 }
 const turn=new PuppetTurn(1);turn.sample(-1,100);const quarter=turn.sample(-1,230);
 let picked=false;for(let y=-110;y<-20&&!picked;y+=12)for(let x=-20;x<=20&&!picked;x+=8)picked=renderers[1].hitTest(...pickPoint(canvases[1],actors[1],x,y,quarter.horizontalScale,quarter.shear))==='turner';

@@ -1,3 +1,5 @@
+import { undoDepthPoint, type PuppetDepthProfile } from "./puppet-depth";
+
 export interface StageTransform {
   x: number;
   y: number;
@@ -6,6 +8,7 @@ export interface StageTransform {
   angle: number;
   horizontalScale?: number;
   shear?: number;
+  depth?: PuppetDepthProfile;
 }
 /** Canvas uses contain: reject clicks in letterboxing rather than shifting targets. */
 export function stagePoint(
@@ -27,10 +30,10 @@ export function actorPoint(x: number, y: number, t: StageTransform) {
   const horizontal = t.horizontalScale ?? t.facing;
   if (Math.abs(horizontal) < 0.03) return { x: Infinity, y: Infinity };
   const localY = (-dx * sin + dy * cos) / t.scale;
+  const localX = ((dx * cos + dy * sin) / t.scale - (t.shear ?? 0) * localY) / horizontal;
+  const local = t.depth ? undoDepthPoint(localX, localY, t.depth) : { x: localX, y: localY };
   return {
-    x:
-      ((dx * cos + dy * sin) / t.scale - (t.shear ?? 0) * localY) / horizontal +
-      350,
-    y: localY + 400,
+    x: local.x + 350,
+    y: local.y + 400,
   };
 }
