@@ -1,0 +1,28 @@
+<!doctype html><html lang="th"><meta charset="utf-8"><title>NangLung — Turning motion check</title><style>body{margin:20px;background:#efe6d5;color:#34271f;font:14px Thonburi,sans-serif}h1{font-size:20px}#frames{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}canvas{width:100%;aspect-ratio:16/9;object-fit:contain;background:#211b16;border-radius:8px}figure{margin:0}figcaption{text-align:center;margin:8px}pre{white-space:pre-wrap}</style><h1>หันแผ่นหนังผ่านสัน — 0.52 วินาที</h1><div id="frames"></div><pre id="result">กำลังตรวจ…</pre><script type="module">
+import {StageRenderer} from '/src/renderer.ts';
+import {defaultSettings,restPose} from '/src/core.ts';
+import {getCharacter} from '/src/characters.ts';
+import {PuppetTurn,PUPPET_TURN_MS} from '/src/puppet-turn.ts';
+const settings=defaultSettings(),image=new Image();image.src=getCharacter('prayut').body.image.src;const warm=new StageRenderer(document.createElement('canvas'));warm.draw(restPose(),{...settings,character:'prayut'});await image.decode();await new Promise(requestAnimationFrame);
+const checks=[],canvases=[],renderers=[],actors=[];
+for(const phase of [0,.25,.5,.75,1]){
+ const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');
+ caption.textContent=`${Math.round(phase*100)}%`;figure.append(canvas,caption);document.getElementById('frames').append(figure);
+ const renderer=new StageRenderer(canvas),actor={key:'turner',character:'prayut',pose:{...restPose()},placement:{x:.5,baseline:765,scale:1.46,lean:0}};
+ renderer.drawActors([actor],settings,false,0);actor.pose.facing=-1;renderer.drawActors([actor],settings,false,100);renderer.drawActors([actor],settings,false,100+phase*PUPPET_TURN_MS);
+ canvases.push(canvas);renderers.push(renderer);actors.push(actor);
+}
+function pickPoint(canvas,actor,localX,localY,horizontal,shear){
+ const r=canvas.getBoundingClientRect(),s=Math.min(r.width/1280,r.height/720),dx=1.46*(localX*horizontal+localY*shear),dy=1.46*localY;
+ return [r.left+(r.width-1280*s)/2+(640+dx)*s,r.top+(r.height-720*s)/2+(765-getCharacter('prayut').footY*1.46+dy)*s];
+}
+const turn=new PuppetTurn(1);turn.sample(-1,100);const quarter=turn.sample(-1,230);
+let picked=false;for(let y=-110;y<-20&&!picked;y+=12)for(let x=-20;x<=20&&!picked;x+=8)picked=renderers[1].hitTest(...pickPoint(canvases[1],actors[1],x,y,quarter.horizontalScale,quarter.shear))==='turner';
+checks.push({name:'picking follows intermediate width and shear',pass:picked});
+checks.push({name:'thin edge cannot select the old full-width footprint',pass:renderers[2].hitTest(...pickPoint(canvases[2],actors[2],0,-80,0,.035))===null});
+checks.push({name:'animation redraws after facing is already unchanged',pass:canvases[0].toDataURL()!==canvases[1].toDataURL()&&canvases[1].toDataURL()!==canvases[2].toDataURL()});
+const renderer=renderers[1],canvas=canvases[1],actor=actors[1];renderer.drawActors([actor],settings,true,230);const frozen=canvas.toDataURL();renderer.drawActors([actor],settings,true,2230);
+checks.push({name:'pause freezes the turning image',pass:canvas.toDataURL()===frozen});renderer.drawActors([actor],settings,false,2230);
+checks.push({name:'resume starts at the frozen angle',pass:canvas.toDataURL()===frozen});
+document.getElementById('result').textContent=JSON.stringify({status:checks.every(c=>c.pass)?'PASS':'FAIL',checks},null,2);
+</script></html>

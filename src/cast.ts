@@ -35,6 +35,14 @@ export function parseCast(value: unknown, settings: Settings): CastState {
   return {version:1,members,controls};
 }
 export function memberForHand(cast:CastState,side:HandSide) { return cast.members.find(m=>m.id===cast.controls[side]); }
+/** Stage side is independent of the physical hand that controls this actor. */
+export function moveMember(cast:CastState,id:string,side:HandSide):boolean {
+  const member=cast.members.find(member=>member.id===id);
+  if(!member||member.side===side)return false;
+  member.side=side;
+  member.pose.facing=side==="Left"?1:-1;
+  return true;
+}
 /** Clicking an actor already driven by the other hand focuses that hand. */
 export function selectMember(cast:CastState,id:string,hand:HandSide,dual=true):HandSide {
   if(!cast.members.some(m=>m.id===id))return hand;

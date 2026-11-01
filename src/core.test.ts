@@ -101,6 +101,32 @@ describe("finger calibration and geometry", () => {
 });
 
 describe("pinky flip gesture", () => {
+  it("accepts exactly 60% after the dwell, but not a lower reading", () => {
+    const g = new FlipGesture();
+    g.update(0, 0);
+    g.update(0, 201);
+    expect(g.update(0.59, 300)).toBe(false);
+    expect(g.update(0.59, 800)).toBe(false);
+    expect(g.update(0.6, 900)).toBe(false);
+    expect(g.update(0.6, 1250)).toBe(true);
+    expect(g.update(0.6, 2000)).toBe(false);
+  });
+  it("can trigger a held 60% input without waiting for filtered overshoot", () => {
+    const c = new PuppetController(),
+      settings = defaultSettings();
+    for (let t = 0; t <= 250; t += 25) c.ingest(sample(), t, t, settings, true);
+    for (let t = 275; t <= 700; t += 25) {
+      c.ingest(
+        { ...sample(), fingers: [0, 0, 0, 0, 0.6] },
+        t,
+        t,
+        settings,
+        true,
+      );
+      c.tick(t, 0.025, settings.smoothing);
+    }
+    expect(c.pose.facing).toBe(-1);
+  });
   it("requires release to arm and flips once per hold", () => {
     const g = new FlipGesture();
     expect(g.update(1, 0)).toBe(false);

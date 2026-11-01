@@ -20,6 +20,7 @@ import {
   addMember,
   initialCast,
   memberForHand,
+  moveMember,
   parseCast,
   placement,
   removeMember,
@@ -361,7 +362,8 @@ function renderDock() {
         hand = activeHands(settings).find(
           (side) => cast.controls[side] === member.id,
         );
-      return `<button class="stage-member ${selected === member.id ? "active" : ""}" data-dock-member="${member.id}" aria-label="เชิด${character.name} ตัวที่${cast.members.indexOf(member) + 1}" aria-pressed="${selected === member.id}">${characterPreview(member.character, `dock-${member.id}`)}<strong>${character.name}</strong><small>ฝั่ง${member.side === "Left" ? "ซ้าย" : "ขวา"}${hand ? ` · มือ${hand === "Left" ? "ซ้าย" : "ขวา"}` : ""}</small><span class="member-check">${icon("check")}</span></button>`;
+      const index = cast.members.indexOf(member) + 1;
+      return `<div class="stage-member ${selected === member.id ? "active" : ""}"><button class="stage-member-select" data-dock-member="${member.id}" aria-label="เชิด${character.name} ตัวที่${index}" aria-pressed="${selected === member.id}" aria-description="${hand ? `ควบคุมด้วยมือ${hand === "Left" ? "ซ้าย" : "ขวา"}` : "ยังไม่ได้เลือกเชิด"}">${characterPreview(member.character, `dock-${member.id}`)}<strong>${character.name}</strong><span class="member-check">${icon("check")}</span></button><div class="stage-side-options" role="group" aria-label="ฝั่งแสดงของ${character.name} ตัวที่${index}">${(["Left", "Right"] as const).map((side) => `<label><input type="checkbox" data-placement-member="${member.id}" value="${side}" ${member.side === side ? "checked" : ""} aria-label="แสดง${character.name}ฝั่ง${side === "Left" ? "ซ้าย" : "ขวา"} ตัวที่${index}"/><span>${side === "Left" ? "ซ้าย" : "ขวา"}</span></label>`).join("")}</div></div>`;
     })
     .join("");
 }
@@ -373,6 +375,24 @@ el("stage-roster").addEventListener("click", (event) => {
     selectActor(id);
     el("stage").focus({ preventScroll: true });
   }
+});
+el("stage-roster").addEventListener("change", (event) => {
+  const input = event.target as HTMLInputElement;
+  const id = input.dataset.placementMember,
+    side = input.value;
+  if (!id || (side !== "Left" && side !== "Right")) return;
+  const member = cast.members.find((member) => member.id === id);
+  if (!member) return;
+  if (member.side === side) {
+    input.checked = true;
+    return;
+  }
+  moveActor(id, side);
+  el("stage-roster")
+    .querySelector<HTMLInputElement>(
+      `[data-placement-member="${id}"][value="${side}"]`,
+    )
+    ?.focus({ preventScroll: true });
 });
 const compactControls = matchMedia("(max-width:760px),(max-height:620px)");
 let fingersTouched = false;
@@ -441,6 +461,19 @@ function openCast() {
     : 0;
   renderCast();
   castDialog.showModal();
+}
+function moveActor(id: string, side: HandSide) {
+  if (!moveMember(cast, id, side)) return;
+  for (const hand of HAND_SIDES)
+    if (cast.controls[hand] === id) bindCastHand(hand);
+  const member = cast.members.find((member) => member.id === id)!;
+  castPage = Math.floor(
+    cast.members.filter((member) => member.side === side).indexOf(member) / 2,
+  );
+  syncCastSettings();
+  save();
+  updateLabels();
+  drawTrackingOverlay();
 }
 function renderCast() {
   const pageCount = Math.max(
@@ -521,13 +554,8 @@ el("cast-roster").addEventListener("click", (event) => {
     return;
   }
   if (button.dataset.moveCast) {
-    member.side = member.side === "Left" ? "Right" : "Left";
-    member.pose.facing = member.side === "Left" ? 1 : -1;
-    for (const side of HAND_SIDES)
-      if (cast.controls[side] === member.id) bindCastHand(side);
-    castPage = Math.floor(
-      cast.members.filter((m) => m.side === member.side).indexOf(member) / 2,
-    );
+    moveActor(member.id, member.side === "Left" ? "Right" : "Left");
+    return;
   } else {
     if (!removeMember(cast, member.id)) return;
     for (const side of HAND_SIDES) bindCastHand(side);
@@ -1059,6 +1087,7 @@ function frame(now: number) {
       selected: cast.controls[settings.hand] === member.id,
     })),
     settings,
+    paused,
   );
   if (now - previousUi > 90) {
     previousUi = now;

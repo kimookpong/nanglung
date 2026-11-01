@@ -1,5 +1,6 @@
 import { actorPoint, stagePoint, type StageTransform } from "./stage-geometry";
 import type { Point, Pose, Settings } from "./core";
+import { PuppetTurn } from "./puppet-turn";
 import {
   armKinematics,
   characterScene,
@@ -159,6 +160,7 @@ type ActorBuffer = {
   puppet: HTMLCanvasElement; mask: HTMLCanvasElement; previous: HTMLCanvasElement;
   active: CharacterId | null; previousCharacter: CharacterDefinition | null;
   changedAt:number; signature:string;
+  turn:PuppetTurn;
 };
 const layer=()=>{const canvas=document.createElement("canvas");canvas.width=1280;canvas.height=720;return canvas;};
 export class StageRenderer {
@@ -171,6 +173,7 @@ export class StageRenderer {
   private theme="";
   private frameSignature="";
   private transitionUntil=0;
+  private turning=false;
   private actors=new Map<string,ActorBuffer>();
   private targets:{key:string;transform:StageTransform;mask:HTMLCanvasElement}[]=[];
   constructor(private canvas:HTMLCanvasElement) {
@@ -195,10 +198,11 @@ export class StageRenderer {
     return null;
   }
   draw(pose:Pose,settings:Settings) {this.drawActors([{key:"single",pose,character:settings.character}],settings);}
-  drawActors(actors:StageActor[],settings:Settings) {
-    const frameSignature=JSON.stringify([artworkRevision,actors,settings.theme,settings.rods,settings.accessories]);
-    if(frameSignature===this.frameSignature&&!this.transitionUntil)return;
+  drawActors(actors:StageActor[],settings:Settings,paused=false,now=performance.now()) {
+    const frameSignature=JSON.stringify([artworkRevision,actors,settings.theme,settings.rods,settings.accessories,paused]);
+    if(frameSignature===this.frameSignature&&!this.transitionUntil&&(!this.turning||paused))return;
     this.frameSignature=frameSignature;
+    this.turning=false;
     const palette=palettes[settings.theme];
     if(this.theme!==settings.theme){this.drawBackdrop(palette);this.theme=settings.theme;}
     const liveKeys=new Set(actors.map(a=>a.key));
@@ -211,14 +215,16 @@ export class StageRenderer {
       if(!buffers) {
         const puppet=document.createElement("canvas"),mask=document.createElement("canvas"),previous=document.createElement("canvas");
         puppet.width=mask.width=previous.width=700;puppet.height=mask.height=previous.height=800;
-        buffers={puppet,mask,previous,active:null,previousCharacter:null,changedAt:-Infinity,signature:""};
+        buffers={puppet,mask,previous,active:null,previousCharacter:null,changedAt:-Infinity,signature:"",turn:new PuppetTurn(actor.pose.facing)};
         this.actors.set(actor.key,buffers);
       }
-      const character=getCharacter(actor.character),pose=actor.pose,now=performance.now();
+      const character=getCharacter(actor.character),pose=actor.pose;
+      const turn=buffers.turn.sample(pose.facing,now,paused);
+      this.turning ||= turn.active;
       if(buffers.active!==character.id) {
         const old=buffers.previous.getContext("2d")!;old.clearRect(0,0,700,800);old.drawImage(buffers.puppet,0,0);
         buffers.previousCharacter=buffers.active?getCharacter(buffers.active):null;
-        if(buffers.active)this.transitionUntil=performance.now()+240;
+        if(buffers.active)this.transitionUntil=now+240;
         buffers.active=character.id;buffers.changedAt=now;
       }
       const signature=JSON.stringify([artworkRevision,actor.character,pose,settings.theme,settings.rods,settings.accessories]);
@@ -233,10 +239,11 @@ export class StageRenderer {
       const scale=placement?.scale??1.46;
       const x=(placement?placement.x+(pose.x-.5)*.45:pose.x)*1280;
       const baseline=placement?placement.baseline+(pose.y-.53)*360:pose.y*720+365;
-      const transform:StageTransform={x,y:baseline-character.footY*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0)};
+      const transform:StageTransform={x,y:baseline-character.footY*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0),horizontalScale:turn.horizontalScale,shear:turn.shear};
       const draw=(buffer:HTMLCanvasElement,def:CharacterDefinition,alpha:number)=>{
+        const visibleWidth=Math.abs(turn.horizontalScale)<.006?(turn.horizontalScale<0?-.006:.006):turn.horizontalScale;
         scene.save();scene.globalAlpha=alpha;scene.translate(x,baseline-def.footY*scale);
-        scene.rotate(transform.angle);scene.scale(pose.facing*scale,scale);scene.drawImage(buffer,-350,-400);scene.restore();
+        scene.rotate(transform.angle);scene.transform(visibleWidth*scale,0,turn.shear*scale,scale,0,0);scene.drawImage(buffer,-350,-400);scene.restore();
       };
       const blend=Math.min(1,(now-buffers.changedAt)/240),eased=blend*blend*(3-2*blend);
       if(buffers.previousCharacter&&blend<1)draw(buffers.previous,buffers.previousCharacter,1-eased);
@@ -265,7 +272,7 @@ export class StageRenderer {
       c.strokeStyle=actor.control==="Left"?"#9ed8ce":"#e2ba75";c.lineWidth=actor.selected?2:1;c.stroke();
       c.fillStyle="#fff0cf";c.fillText(`${actor.control==="Left"?"L":"R"} · ${getCharacter(actor.character).name}`,x,699);c.restore();
     }
-    if(performance.now()>=this.transitionUntil)this.transitionUntil=0;
+    if(now>=this.transitionUntil)this.transitionUntil=0;
   }
   private drawBackdrop(p:Palette) {
     const c=this.background.getContext("2d")!;

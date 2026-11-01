@@ -220,7 +220,7 @@ export class FlipGesture {
       return false;
     }
     this.releasing = null;
-    if (value <= 0.72) {
+    if (value < 0.6) {
       this.holding = null;
       this.progress = 0;
       return false;
@@ -356,7 +356,9 @@ export class PuppetController {
       head: values.head * 0.55,
       facing: this.pose.facing,
     };
-    if (this.gesture.update(values.flip, now))
+    // The dwell and release already reject brief noise. Use the normalized
+    // reading so a held 60% gesture does not wait for smoothing to exceed 60%.
+    if (this.gesture.update(raw[settings.assignments.indexOf("flip")], now))
       this.target.facing = this.pose.facing === 1 ? -1 : 1;
     this.state = "tracking";
     return true;

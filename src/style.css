@@ -640,14 +640,10 @@ input[type="range"]:disabled {
 }
 .stage-member {
   position: relative;
-  min-width: 0;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 7px 9px;
+  min-width: 0;
+  min-height: 0;
   border: 1px solid #e8dfcf;
   border-radius: 11px;
   background: #f2ecdf;
@@ -656,6 +652,52 @@ input[type="range"]:disabled {
     background 0.15s,
     border-color 0.15s,
     box-shadow 0.15s;
+}
+.stage-member-select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  padding: 8px 7px 4px;
+  gap: 4px;
+  background: transparent;
+  overflow: hidden;
+}
+.stage-member-select strong {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  line-height: 1.3;
+}
+.stage-side-options {
+  display: flex;
+  flex: none;
+  gap: 4px;
+  padding: 3px 5px 5px;
+  border-top: 1px solid #d9cbb555;
+}
+.stage-side-options label {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #806448;
+  cursor: pointer;
+}
+.stage-side-options input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: var(--red);
+  cursor: pointer;
 }
 .stage-member:hover {
   background: #ede2d1;
@@ -1756,7 +1798,7 @@ input[type="range"]:disabled {
   .stage-roster {
     gap: 8px;
   }
-  .stage-member {
+  .stage-member-select {
     padding: 8px;
     gap: 3px;
   }
@@ -2050,7 +2092,7 @@ input[type="range"]:disabled {
   .stage-roster {
     gap: 5px;
   }
-  .stage-member {
+  .stage-member-select {
     display: grid;
     grid-template-columns: 29px minmax(0, 1fr);
     grid-template-rows: 1fr 1fr;
@@ -2068,7 +2110,7 @@ input[type="range"]:disabled {
   }
   .stage-member strong {
     font-size: 10px;
-    align-self: end;
+    align-self: center;
   }
   .stage-member small {
     font-size: 8px;
@@ -2499,7 +2541,7 @@ input[type="range"]:disabled {
   .stage-member .puppet-preview {
     max-height: 58px;
   }
-  .stage-member {
+  .stage-member-select {
     padding: 4px 6px;
   }
 
@@ -2687,7 +2729,7 @@ input[type="range"]:disabled {
   .stage-roster {
     gap: 4px;
   }
-  .stage-member {
+  .stage-member-select {
     grid-template-columns: 23px minmax(0, 1fr);
     padding: 3px 4px;
     column-gap: 4px;
@@ -3025,7 +3067,7 @@ input[type="range"]:disabled {
 .stage-roster[data-dense="true"] {
   gap: 6px;
 }
-.stage-roster[data-dense="true"] .stage-member {
+.stage-roster[data-dense="true"] .stage-member-select {
   padding: 6px 4px;
   gap: 3px;
 }
@@ -3035,7 +3077,7 @@ input[type="range"]:disabled {
 .stage-roster[data-dense="true"] .stage-member small {
   font-size: 8px;
 }
-.stage-roster[data-many="true"] .stage-member {
+.stage-roster[data-many="true"] .stage-member-select {
   display: grid;
   grid-template-columns: 23px minmax(0, 1fr);
   grid-template-rows: 1fr 1fr;
@@ -3050,7 +3092,7 @@ input[type="range"]:disabled {
   max-height: 65px;
 }
 .stage-roster[data-many="true"] .stage-member strong {
-  align-self: end;
+  align-self: center;
   font-size: 10px;
   max-width: 100%;
   overflow: hidden;
@@ -3067,7 +3109,7 @@ input[type="range"]:disabled {
   display: none;
 }
 @container (max-height: 190px) {
-  .stage-member {
+  .stage-member-select {
     display: grid;
     grid-template-columns: 23px minmax(0, 1fr);
     grid-template-rows: 1fr 1fr;
@@ -3083,7 +3125,7 @@ input[type="range"]:disabled {
     max-height: 65px;
   }
   .stage-member strong {
-    align-self: end;
+    align-self: center;
     font-size: 10px;
   }
   .stage-member small {
@@ -3092,12 +3134,12 @@ input[type="range"]:disabled {
   }
 }
 @container (max-height: 120px) {
-  .stage-member {
+  .stage-member-select {
     display: flex !important;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 2px !important;
+    padding: 0 !important;
     gap: 0 !important;
   }
   .stage-member .puppet-preview,
@@ -3250,5 +3292,25 @@ input[type="range"]:disabled {
   *:after {
     transition: none !important;
     animation: none !important;
+  }
+}
+@media (max-width: 760px), (max-height: 620px) {
+  .stage-side-options {
+    gap: 2px;
+    padding: 1px 2px 2px;
+  }
+  .stage-side-options label {
+    font-size: 8px;
+    gap: 2px;
+    line-height: 1.4;
+  }
+  .stage-side-options input {
+    width: 10px;
+    height: 10px;
+  }
+}
+@media (max-width: 760px) and (max-height: 620px) and (orientation: portrait) {
+  .workspace:has(.stage-roster[data-many="true"]) .stage-shell {
+    aspect-ratio: 16 / 5;
   }
 }
