@@ -1062,7 +1062,8 @@ function frame(now: number) {
   );
   if (now - previousUi > 90) {
     previousUi = now;
-    active.controller.fingers.forEach((value, i) => {
+    active.controller.fingers.forEach((reading, i) => {
+      const value = cameraOn ? reading : 0;
       el(`meter-${i}`).style.width = `${value * 100}%`;
       el(`value-${i}`).textContent = `${Math.round(value * 100)}%`;
       document
