@@ -768,12 +768,6 @@ input[type="range"]:disabled {
 .control-footer > button {
   width: 100%;
 }
-.control-footer > p {
-  font-size: 9px;
-  color: #a48f74;
-  text-align: center;
-  margin-top: 9px;
-}
 
 .camera-view {
   display: flex;
@@ -1793,9 +1787,6 @@ input[type="range"]:disabled {
   .control-footer > .primary-button {
     height: 37px;
   }
-  .control-footer > p {
-    display: none;
-  }
   .camera-note {
     font-size: 9px;
   }
@@ -1887,9 +1878,6 @@ input[type="range"]:disabled {
   }
   .control-footer {
     padding-top: 9px;
-  }
-  .control-footer > p {
-    display: none;
   }
   .control-footer > .primary-button {
     height: 36px;
@@ -2108,9 +2096,6 @@ input[type="range"]:disabled {
     height: 30px;
     font-size: 11px;
     border-radius: 6px;
-  }
-  .control-footer > p {
-    display: none;
   }
   .camera-view {
     gap: 6px;

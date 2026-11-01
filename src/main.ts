@@ -481,9 +481,6 @@ function updateCameraUI() {
     ? "ครั้งแรกอาจใช้เวลาสักครู่"
     : "หันฝ่ามือเข้ากล้อง ให้เห็นนิ้วครบ";
   el<HTMLButtonElement>("calibrate").disabled = !cameraOn || cameraLoading;
-  el("control-footer-note").textContent = cameraOn
-    ? "ประมวลผลภาพบนเครื่อง"
-    : "กดเริ่มเชิด ระบบจะเปิดกล้องให้";
 }
 function setPause(value: boolean) {
   paused = value;
