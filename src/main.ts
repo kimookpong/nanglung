@@ -933,9 +933,8 @@ function frame(now: number) {
       member.pose = { ...pose };
     }
   }
-  const frontActor=stageDrag?.active?stageDrag.id:cast.controls[settings.hand];
   renderer.drawActors(
-    [...cast.members].sort((a,b)=>Number(a.id===frontActor)-Number(b.id===frontActor)).map((member) => ({
+    cast.members.map((member) => ({
       key: member.id,
       pose: member.pose,
       character: member.character,

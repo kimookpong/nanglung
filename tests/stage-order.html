@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="th">
+<meta charset="utf-8">
+<title>NangLung — Edge stacking check</title>
+<style>body{margin:16px;background:#eee5d5;font:14px sans-serif}canvas{display:block;width:min(100%,1100px);aspect-ratio:16/9;object-fit:contain}pre{white-space:pre-wrap}</style>
+<h1>ตัวละครใกล้ริมเวทีอยู่ด้านหน้า</h1>
+<canvas id="stage"></canvas><pre id="result">กำลังตรวจ…</pre>
+<script type="module">
+import {StageRenderer} from '/src/renderer.ts';
+import {defaultSettings,restPose} from '/src/core.ts';
+import {getCharacter} from '/src/characters.ts';
+const canvas=document.getElementById('stage'),renderer=new StageRenderer(canvas),settings=defaultSettings(),checks=[];
+const actor=(key,x,character='theng')=>({key,character,pose:restPose(),placement:{x,baseline:650,scale:1.02,lean:0}});
+const leftOuter=actor('left outer',.27),leftInner=actor('left inner',.32,'prayut');
+const rightOuter=actor('right outer',.73),rightInner=actor('right inner',.68,'thaksin');
+const all=[leftOuter,leftInner,rightOuter,rightInner];
+renderer.drawActors(all,settings);
+await Promise.all(all.map(async a=>{const src=getCharacter(a.character).body.image?.src;if(src){const image=new Image();image.src=src;await image.decode();}}));
+await new Promise(requestAnimationFrame);
+const rect=canvas.getBoundingClientRect(),scale=Math.min(rect.width/1280,rect.height/720);
+const offset={x:rect.left+(rect.width-1280*scale)/2,y:rect.top+(rect.height-720*scale)/2};
+const hit=(x,y)=>renderer.hitTest(offset.x+x*scale,offset.y+y*scale);
+function overlap(outer,inner){
+  // Both masks must cover the same point, so picking verifies the actual paint order.
+  renderer.drawActors([outer],settings);
+  const candidates=[];
+  for(let y=200;y<540;y+=8)for(let x=Math.round(Math.min(outer.placement.x,inner.placement.x)*1280)-70;x<Math.max(outer.placement.x,inner.placement.x)*1280+70;x+=8)
+    if(hit(x,y)===outer.key)candidates.push({x,y});
+  renderer.drawActors([inner],settings);
+  const point=candidates.find(p=>hit(p.x,p.y)===inner.key);
+  if(!point)throw Error('No opaque overlap for '+outer.key);
+  return point;
+}
+for(const [outer,inner] of [[leftOuter,leftInner],[rightOuter,rightInner]]){
+  const point=overlap(outer,inner);
+  for(const pair of [[outer,inner],[inner,outer]]){
+    inner.selected=true;
+    renderer.drawActors(pair,settings,false,performance.now(),inner.key);
+    checks.push({name:outer.key+' remains in front, including selected/dragged inner actor',pass:hit(point.x,point.y)===outer.key});
+  }
+  const oldX=outer.placement.x;outer.placement.x=inner.placement.x;inner.placement.x=oldX;
+  const moved=overlap(inner,outer);
+  renderer.drawActors([inner,outer],settings);
+  checks.push({name:inner.key+' moves outward and becomes frontmost',pass:hit(moved.x,moved.y)===inner.key});
+  outer.placement.x=oldX;inner.placement.x=outer===leftOuter ? .32 : .68;
+}
+renderer.drawActors(all,settings);
+document.getElementById('result').textContent=JSON.stringify({pass:checks.every(c=>c.pass),checks},null,2);
+</script>
+</html>

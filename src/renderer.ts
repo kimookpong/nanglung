@@ -1,6 +1,7 @@
 import { actorPoint, stagePoint, stageAnchor, type StagePlacement, type StageTransform } from "./stage-geometry";
 import type { Point, Pose, Settings } from "./core";
 import { PuppetTurn } from "./puppet-turn";
+import { stagePaintOrder } from "./stage-order";
 import { depthPoint, PuppetDepthRenderer } from "./puppet-depth";
 import {
   armKinematics,
@@ -213,7 +214,8 @@ export class StageRenderer {
       scene.fillText("ฝั่งซ้าย · มือซ้าย",320,125);scene.fillText("ฝั่งขวา · มือขวา",960,125);scene.restore();
     }
     this.targets=[];
-    for(const actor of actors) {
+    const orderedActors=stagePaintOrder(actors);
+    for(const actor of orderedActors) {
       let buffers=this.actors.get(actor.key);
       if(!buffers) {
         const puppet=document.createElement("canvas"),mask=document.createElement("canvas"),previous=document.createElement("canvas");
@@ -265,7 +267,7 @@ export class StageRenderer {
       c.save();c.globalAlpha=.93;c.drawImage(this.logo,(1280-width)/2,18,width,height);c.restore();
     }
     // Small hand tags identify control without changing the puppet's silhouette.
-    for(const actor of actors.filter(a=>a.control)) {
+    for(const actor of orderedActors.filter(a=>a.control)) {
       const target=this.targets.find(t=>t.key===actor.key)!;
       const x=Math.max(65,Math.min(1215,target.transform.x));
       c.save();c.font="14px Thonburi, sans-serif";c.textAlign="center";
