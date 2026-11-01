@@ -44,7 +44,7 @@ describe("character library", () => {
   });
   it("keeps the named main cast first, original artwork and independent saved choices", () => {
     expect(CHARACTERS.slice(0,6).map(c => c.id)).toEqual(MAIN_CAST_IDS);
-    expect(CHARACTERS.slice(0,6).map(c => c.name)).toEqual(["ลุงเท่ง", "ลุงยุทธ์", "ลุงแม้ว", "ลุงวิตร", "ลุงหนู", "ลุงเอก"]);
+    expect(CHARACTERS.slice(0,6).map(c => c.name)).toEqual(["ลุงเท่ง", "ลุงตู่", "ลุงแม้ว", "ลุงป้อม", "ลุงหนู", "ลุงเอก"]);
     for (const c of CHARACTERS.slice(1,6)) {
       expect(c.body.image?.src).toBe(`/characters/sprites/${c.id}-body.webp`);
       expect(c.body.exclude).toBeUndefined();
@@ -191,5 +191,18 @@ describe("character library", () => {
       // The wrist stays forward of the head pivot by more than the face's depth.
       expect(raised.wrist[0] - c.head.anchor[0]).toBeGreaterThan(55);
     }
+  });
+  it("gives each caricature its satirical gimmick on the part it moves with", () => {
+    const scene = (id: string, pose = REST_RIG) => flatten(characterScene(CHARACTERS.find(c => c.id === id)!, pose));
+    const prayut = characterScene(CHARACTERS.find(c => c.id === "prayut")!, REST_RIG);
+    const head = prayut.find(n => n.name === "head")!;
+    expect(flatten(head.children!).some(n => n.name === "cap-crown")).toBe(true);
+    const forearm = scene("prawit").find(n => n.name === "right-arm-forearm")!;
+    expect(flatten(forearm.children!).some(n => n.name === "watch-bezel")).toBe(true);
+    const anutin = characterScene(CHARACTERS.find(c => c.id === "anutin")!, REST_RIG).map(n => n.name);
+    expect(anutin.indexOf("tail")).toBeLessThan(anutin.indexOf("body"));
+    const lettering = scene("thaksin").find(n => n.name === "shirt-lettering")!;
+    expect(lettering.graphic?.text?.lines.join("")).toBe("เสื้อนี้สีแดง");
+    expect(characterSvg(CHARACTERS.find(c => c.id === "thaksin")!)).toContain("<tspan");
   });
 });

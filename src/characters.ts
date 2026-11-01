@@ -21,6 +21,8 @@ export interface Graphic {
   strokeWidth?: number;
   image?: { src:string; width:number; height:number; matrix:readonly [number,number,number,number,number,number] };
   exclude?: string[];
+  /** Lettering centred on the node; renderers keep it readable when the puppet faces left. */
+  text?: { lines: string[]; size: number; fill: string; stroke?: string; strokeWidth?: number };
 }
 export interface SceneNode {
   name: string;
@@ -64,6 +66,8 @@ export interface CharacterDefinition {
   cloth: Graphic;
   legs: Graphic;
   decorations?: SceneNode[];
+  /** Drawn behind the body, in front of the far arm (e.g. a tail). */
+  underlay?: SceneNode[];
   viewBox?: string;
   head: {
     anchor: XY;
@@ -110,11 +114,11 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   },
   {
     id: "prayut",
-    name: "ลุงยุทธ์",
-    fullName: "ลุงยุทธ์ · ประยุทธ์ จันทร์โอชา · ตัวละครล้อเลียน",
+    name: "ลุงตู่",
+    fullName: "ลุงตู่ · ประยุทธ์ จันทร์โอชา · ตัวละครล้อเลียน",
     numeral: "๐๒",
-    subtitle: "เครื่องแบบดำ · ขอบทอง · มือชี้",
-    traits: "ลุงยุทธ์ ตัวละครล้อเลียนประยุทธ์ จันทร์โอชา ใช้ภาพใหม่ของผู้ใช้: เครื่องแบบดำ ขอบทอง อินทรธนู แถบสีหน้าอก เข็มขัด และมือชี้ คงลายเส้นและพื้นผิวจากภาพจริง",
+    subtitle: "หมวกทรงสูงแบบคณะทหาร · เครื่องแบบดำ · มือชี้",
+    traits: "ลุงตู่ ตัวละครล้อเลียนประยุทธ์ จันทร์โอชา ใช้ภาพใหม่ของผู้ใช้: สวมหมวกนายทหารทรงสูงแบบคณะผู้ยึดอำนาจ กระบังดำปักทอง เครื่องแบบดำ ขอบทอง อินทรธนู แถบสีหน้าอก เข็มขัด และมือชี้ คงลายเส้นและพื้นผิวจากภาพจริง",
     gesture: "ยกฝ่ามืออธิบาย สลับชี้ประกอบคำ แล้วพักฟังลุงเท่ง",
     source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
     sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
@@ -125,8 +129,8 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
     name: "ลุงแม้ว",
     fullName: "ลุงแม้ว · ทักษิณ ชินวัตร · ตัวละครล้อเลียน",
     numeral: "๐๓",
-    subtitle: "สูทดำ · ผ้าลายแดงทอง · มือชี้",
-    traits: "ลุงแม้ว ตัวละครล้อเลียนทักษิณ ชินวัตร ใช้ภาพใหม่ของผู้ใช้: ผมปัด ยิ้ม สูทดำ เนกไทแดง เข็มธงไทย ผ้านุ่งลายแดงทองเขียว และรองเท้าปลายงอน คงรายละเอียดจากภาพจริง",
+    subtitle: "สูทดำปัก “เสื้อนี้สีแดง” · ผ้าลายแดงทอง",
+    traits: "ลุงแม้ว ตัวละครล้อเลียนทักษิณ ชินวัตร ใช้ภาพใหม่ของผู้ใช้: ผมปัด ยิ้ม สูทดำที่ปักข้อความ “เสื้อนี้สีแดง” เนกไทแดง เข็มธงไทย ผ้านุ่งลายแดงทองเขียว และรองเท้าปลายงอน คงรายละเอียดจากภาพจริง",
     gesture: "ยกฝ่ามือรับบทสนทนา ยิ้มตอบ และผายมือประกอบคำ",
     source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
     sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
@@ -134,12 +138,12 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
   },
   {
     id: "prawit",
-    name: "ลุงวิตร",
-    fullName: "ลุงวิตร · ประวิตร วงษ์สุวรรณ · ตัวละครล้อเลียน",
+    name: "ลุงป้อม",
+    fullName: "ลุงป้อม · ประวิตร วงษ์สุวรรณ · ตัวละครล้อเลียน",
     numeral: "๐๔",
-    subtitle: "แก้มเต็ม · เครื่องแบบดำ · ขอบทอง",
-    traits: "ลุงวิตร ตัวละครล้อเลียนประวิตร วงษ์สุวรรณ ใช้ภาพใหม่ของผู้ใช้: รูปร่างป้อม แก้มเต็ม เครื่องแบบดำ ขอบทอง แถบสีหน้าอก และมือชี้ คงรูปหน้าและพื้นผิวจากภาพจริง",
-    gesture: "ยกฝ่ามือใกล้ลำตัว เว้นช่วงฟัง แล้วพยักหน้ารับบทสนทนา",
+    subtitle: "นาฬิกาเรือนโต · แก้มเต็ม · เครื่องแบบดำ",
+    traits: "ลุงป้อม ตัวละครล้อเลียนประวิตร วงษ์สุวรรณ ใช้ภาพใหม่ของผู้ใช้: นาฬิกาทองเรือนโตประดับเพชรที่ข้อมือมือชี้ รูปร่างป้อม แก้มเต็ม เครื่องแบบดำ ขอบทอง แถบสีหน้าอก และมือชี้ คงรูปหน้าและพื้นผิวจากภาพจริง",
+    gesture: "ยกมือชี้ให้นาฬิกาเด่น เว้นช่วงฟัง แล้วพยักหน้ารับบทสนทนา",
     source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
     sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
     ...USER_PUPPETS.prawit,
@@ -149,8 +153,8 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
     name: "ลุงหนู",
     fullName: "ลุงหนู · อนุทิน ชาญวีรกูล · ตัวละครล้อเลียน",
     numeral: "๐๕",
-    subtitle: "ชุดคราม · ผ้าคาดธงไทย · มือชี้",
-    traits: "ลุงหนู ตัวละครล้อเลียนอนุทิน ชาญวีรกูล ใช้ภาพใหม่ของผู้ใช้: ชุดคราม ตราหน้าอก ผ้าคาดเอวสีธงไทย นาฬิกาข้อมือ และมือชี้ คงรายละเอียดจากภาพจริง เป็นคนละตัวกับหนูนุ้ย",
+    subtitle: "หางหนู · ชุดคราม · ผ้าคาดธงไทย",
+    traits: "ลุงหนู ตัวละครล้อเลียนอนุทิน ชาญวีรกูล ใช้ภาพใหม่ของผู้ใช้: มีหางหนูยาวโผล่จากด้านหลัง ชุดคราม ตราหน้าอก ผ้าคาดเอวสีธงไทย นาฬิกาข้อมือ และมือชี้ คงรายละเอียดจากภาพจริง เป็นคนละตัวกับหนูนุ้ย",
     gesture: "ผายมือกว้างสลับรับคำ อีกมือพักข้างลำตัว",
     source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
     sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
@@ -310,6 +314,7 @@ export function characterScene(
   return [
     makeArm("left", pose.leftArm),
     { name: "legs", graphic: character.legs },
+    ...(character.underlay ?? []),
     { name: "body", graphic: character.body },
     { name: "cloth", graphic: character.cloth },
     ...(prop?.attachment === "waist"
@@ -368,7 +373,10 @@ export function sceneSvg(
     if (node.graphic) {
       const g = node.graphic;
       const paint = `${g.fill ? ` fill="${g.fill}"` : ""}${g.stroke ? ` stroke="${g.stroke}" stroke-width="${g.strokeWidth ?? 1}" stroke-linecap="round" stroke-linejoin="round"` : ""}`;
-      if(g.image) {
+      if(g.text) {
+        const t=g.text,top=-(t.lines.length-1)*t.size*.6;
+        graphic=`<text text-anchor="middle" dominant-baseline="central" font-family="Thonburi,Noto Sans Thai,Tahoma,sans-serif" font-weight="700" font-size="${t.size}" fill="${t.fill}"${t.stroke?` stroke="${t.stroke}" stroke-width="${t.strokeWidth??1}" paint-order="stroke" stroke-linejoin="round"`:""}>${t.lines.map((line,i)=>`<tspan x="0" y="${top+i*t.size*1.2}">${line}</tspan>`).join("")}</text>`;
+      } else if(g.image) {
         const imageId=`${prefix}-image-${g.image.src.split("/").pop()!.replace(/\W/g,"-")}`;
         if(!images.has(imageId))images.set(imageId,g.image);
         const mask=g.exclude?.length?`<mask id="${id}-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="2000" height="2000"><path d="${g.path}" fill="white"/>${g.exclude.map(path=>`<path d="${path}" fill="black" fill-rule="evenodd"/>`).join("")}</mask>`:"";

@@ -136,7 +136,7 @@ def closing(mask, radius):
     return np.asarray(closed.resize((W, H), Image.BILINEAR)) > 127
 
 
-def save(name, rgb, alpha):
+def save(name, rgb, alpha, outline=True):
     """Outline, crop and write one sprite; returns its source-pixel box."""
     ys, xs = np.nonzero(alpha > 0.02)
     pad = OUTLINE + 3
@@ -146,6 +146,8 @@ def save(name, rgb, alpha):
     # Blur-and-boost is a fast, soft dilation: an even outline with smooth ends.
     ring = Image.fromarray((a * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(OUTLINE * .55))
     ring = np.clip(np.asarray(ring, np.float32) / 255 * 3.2, 0, 1)
+    if not outline:
+        ring = np.zeros_like(a)
     out_a = a + ring * (1 - a)
     out_c = (c * a[..., None] + np.array(INK) * (ring * (1 - a))[..., None]) / np.maximum(out_a, 1e-6)[..., None]
     pixels = np.dstack([np.clip(out_c, 0, 255), np.clip(out_a * 255, 0, 255)]).astype(np.uint8)
@@ -184,7 +186,8 @@ def cut_puppet(cut):
     mouth = alpha * head * jaw
     head_rgb = np.where((jaw > .5)[..., None] & (head > .5)[..., None], np.array(MOUTH, np.float32), rgb)
     boxes["head"] = save(f"{pid}-head", head_rgb, np.maximum(head_alpha, mouth))
-    boxes["jaw"] = save(f"{pid}-jaw", rgb, alpha * jaw)
+    # The jaw sits inside the face: an outline would draw a ring across the cheek.
+    boxes["jaw"] = save(f"{pid}-jaw", rgb, alpha * jaw, outline=False)
 
     for side, parts in arms.items():
         joint = {"upper": cut[side]["shoulder"], "lower": cut[side]["elbow"], "hand": cut[side]["wrist"]}
