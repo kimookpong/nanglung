@@ -15,7 +15,7 @@
   overflow: hidden;
 }
 .sidebar-heading { display: flex; align-items: center; justify-content: space-between; gap: 4px; flex: none; }
-.sidebar-heading h1 { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.sidebar-heading h2 { font-size: 13px; font-weight: 600; white-space: nowrap; }
 .sidebar-heading nav { display: flex; gap: 1px; }
 .sidebar-heading .icon-button { width: 28px; height: 30px; padding: 5px; color: #927b60; }
 .sidebar-heading .icon-button svg { width: 16px; height: 16px; }
@@ -83,7 +83,7 @@
   .workspace .stage-column { flex: 1; }
   .workspace .stage-shell { flex: 1; height: 0; aspect-ratio: auto; }
   .workspace .control-column { padding: 8px; gap: 5px; }
-  .sidebar-heading h1 { font-size: 11px; }
+  .sidebar-heading h2 { font-size: 11px; }
   .sidebar-heading .icon-button { width: 24px; height: 26px; }
   .workspace .input-source { height: 26px; }
   .workspace .input-source > select { height: 26px; width: 60px; font-size: 10px; }
@@ -127,3 +127,5 @@
   .workspace:has(.stage-roster[data-many="true"]) .stage-shell { aspect-ratio: 16 / 6; }
   .workspace:has(.stage-roster[data-crowded="true"]) .stage-shell { aspect-ratio: 16 / 4; }
 }
+/* The page title for search and screen readers; the stage is the visual title. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

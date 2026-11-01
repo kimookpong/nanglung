@@ -14,6 +14,7 @@ import {
   restPose,
 } from "./core";
 import { CameraTracker } from "./camera";
+import { preloadStudio } from "./preload";
 import { StageRenderer, drawLandmarks, drawHands } from "./renderer";
 import { getCharacter, isCharacterId } from "./characters";
 import {
@@ -83,6 +84,9 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML =
 function el<T extends HTMLElement = HTMLElement>(id: string) {
   return document.getElementById(id)! as T;
 }
+// Until every sprite and the tracking model are loaded, the loader covers the
+// studio and "เริ่มเชิด" stays disabled.
+let studioReady = false;
 const ensemble = new HandEnsemble();
 ensemble.reset(settings);
 let active = ensemble.sessions[settings.hand];
@@ -462,7 +466,7 @@ function updateCameraUI() {
       ? "กล้อง"
       : "กล้องปิด";
   const start = el<HTMLButtonElement>("start-camera");
-  start.disabled = cameraLoading;
+  start.disabled = cameraLoading || !studioReady;
   // Starting a performance is the main action; the camera is how it happens.
   start.classList.toggle("is-live", cameraOn);
   start.innerHTML = cameraLoading
@@ -1066,5 +1070,18 @@ updateCameraUI();
 if (migrateSavedCast) save();
 
 requestAnimationFrame(frame);
+const loader = document.getElementById("studio-loader");
+void preloadStudio(({ fraction, label }) => {
+  const percent = `${Math.round(fraction * 100)}%`;
+  el("studio-loader-bar").style.width = percent;
+  el("studio-loader-percent").textContent = percent;
+  el("studio-loader-label").textContent = label;
+}).finally(() => {
+  studioReady = true;
+  updateCameraUI();
+  loader?.setAttribute("aria-busy", "false");
+  loader?.classList.add("is-done");
+  setTimeout(() => loader?.remove(), 600);
+});
 if (storageUnavailable)
   notify("ใช้ค่าเริ่มต้น การตั้งค่าที่บันทึกไว้ไม่พร้อมใช้งาน");

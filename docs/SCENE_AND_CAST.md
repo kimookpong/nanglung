@@ -28,7 +28,7 @@
 
 ## โลโก้ PNG ใหม่
 
-ไฟล์ใช้งานคือ [nanglung-logo-transparent.png](../public/branding/nanglung-logo-transparent.png) สร้างด้วย **imagegen built-in tool** จากโลโก้เดิม เป็น PNG RGBA ขนาด 1774×887 มี alpha โปร่งใสจริง ไม่ได้วาดพื้นกระดาษหรือกรอบป้ายทับฉาก ไฟล์โลโก้เดิมเก็บไว้เป็นต้นแบบ
+ไฟล์ใช้งานคือ [nanglung-logo.webp](../public/branding/nanglung-logo.webp) (สร้างจาก `art/branding/nanglung-logo-transparent.png` ด้วย `scripts/build-web-images.py`) สร้างด้วย **imagegen built-in tool** จากโลโก้เดิม เป็น PNG RGBA ขนาด 1774×887 มี alpha โปร่งใสจริง ไม่ได้วาดพื้นกระดาษหรือกรอบป้ายทับฉาก ไฟล์โลโก้เดิมเก็บไว้เป็นต้นแบบ
 
 พรอมป์ต์ที่ใช้:
 

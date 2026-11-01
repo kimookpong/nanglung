@@ -1,6 +1,7 @@
 import { actorPoint, stagePoint, stageAnchor, type StagePlacement, type StageTransform } from "./stage-geometry";
 import type { Point, Pose, Settings } from "./core";
 import { PuppetTurn } from "./puppet-turn";
+import { carry, enterFade, exitFade, ENTER_MS, EXIT_MS, MOVE_MS, type Mark } from "./stage-motion";
 import { stagePaintOrder } from "./stage-order";
 import { depthPoint, PuppetDepthRenderer } from "./puppet-depth";
 import {
@@ -48,6 +49,15 @@ function imageAsset(src:string) {
     artwork.set(src,image);
   }
   return image;
+}
+/** Resolve once a sprite is decoded (or failed), sharing the renderer's cache. */
+export function loadArtwork(src:string):Promise<void> {
+  const image=imageAsset(src);
+  if(image.complete)return Promise.resolve();
+  return new Promise(resolve=>{
+    image.addEventListener("load",()=>{image.decode().catch(()=>{}).finally(resolve);},{once:true});
+    image.addEventListener("error",()=>resolve(),{once:true});
+  });
 }
 function cachedPath(data:string) {
   let path=paths.get(data);if(!path){path=new Path2D(data);paths.set(data,path);}return path;
@@ -163,7 +173,12 @@ type ActorBuffer = {
   active: CharacterId | null; previousCharacter: CharacterDefinition | null;
   changedAt:number; signature:string;
   turn:PuppetTurn;
+  /** Stage choreography: when it entered, its placement mark and any carry in progress. */
+  bornAt:number; mark:Mark|null; carryFrom:Mark|null; carryAt:number;
+  /** Last on-stage matrix, so a removed puppet can leave from where it stood. */
+  shown:[number,number,number,number,number,number]|null;
 };
+type Ghost={buffer:HTMLCanvasElement;matrix:[number,number,number,number,number,number];leftAt:number};
 const layer=()=>{const canvas=document.createElement("canvas");canvas.width=1280;canvas.height=720;return canvas;};
 export class StageRenderer {
   private context:CanvasRenderingContext2D;
@@ -177,11 +192,14 @@ export class StageRenderer {
   private transitionUntil=0;
   private turning=false;
   private actors=new Map<string,ActorBuffer>();
+  private ghosts:Ghost[]=[];
+  private hasDrawn=false;
+  private reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
   private targets:{key:string;transform:StageTransform;mask:HTMLCanvasElement}[]=[];
   constructor(private canvas:HTMLCanvasElement) {
     this.context=canvas.getContext("2d")!;canvas.width=1280;canvas.height=720;
     this.logo.onload=()=>{this.frameSignature="";};
-    this.logo.src=`${import.meta.env.BASE_URL}branding/nanglung-logo-transparent.png`;
+    this.logo.src=`${import.meta.env.BASE_URL}branding/nanglung-logo.webp`;
     this.rawPuppet.width=700;this.rawPuppet.height=800;
   }
   hitTest(clientX:number,clientY:number):string|null {
@@ -204,7 +222,11 @@ export class StageRenderer {
     const palette=palettes[settings.theme];
     if(this.theme!==settings.theme){this.drawBackdrop(palette);this.theme=settings.theme;}
     const liveKeys=new Set(actors.map(a=>a.key));
-    for(const key of this.actors.keys())if(!liveKeys.has(key))this.actors.delete(key);
+    for(const [key,buffers] of this.actors)if(!liveKeys.has(key)) {
+      // A removed puppet keeps its last picture and is lifted off the screen.
+      if(buffers.shown&&!this.reduceMotion){this.ghosts.push({buffer:buffers.puppet,matrix:buffers.shown,leftAt:now});this.animateUntil(now+EXIT_MS);}
+      this.actors.delete(key);
+    }
     const scene=this.scene.getContext("2d")!;
     scene.clearRect(0,0,1280,720);scene.drawImage(this.background,0,0);
     if(dragging) {
@@ -214,13 +236,21 @@ export class StageRenderer {
       scene.fillText("ฝั่งซ้าย · มือซ้าย",320,125);scene.fillText("ฝั่งขวา · มือขวา",960,125);scene.restore();
     }
     this.targets=[];
+    this.ghosts=this.ghosts.filter(ghost=>{
+      const fade=exitFade(now-ghost.leftAt);
+      if(fade.done)return false;
+      scene.save();scene.globalAlpha=fade.alpha;scene.translate(0,fade.dy);scene.transform(...ghost.matrix);scene.drawImage(ghost.buffer,-350,-400);scene.restore();
+      return true;
+    });
     const orderedActors=stagePaintOrder(actors);
     for(const actor of orderedActors) {
       let buffers=this.actors.get(actor.key);
       if(!buffers) {
         const puppet=document.createElement("canvas"),mask=document.createElement("canvas"),previous=document.createElement("canvas");
         puppet.width=mask.width=previous.width=700;puppet.height=mask.height=previous.height=800;
-        buffers={puppet,mask,previous,active:null,previousCharacter:null,changedAt:-Infinity,signature:"",turn:new PuppetTurn(actor.pose.facing)};
+        buffers={puppet,mask,previous,active:null,previousCharacter:null,changedAt:-Infinity,signature:"",turn:new PuppetTurn(actor.pose.facing),
+          bornAt:this.hasDrawn&&!this.reduceMotion?now:-Infinity,mark:null,carryFrom:null,carryAt:0,shown:null};
+        if(this.hasDrawn)this.animateUntil(now+ENTER_MS);
         this.actors.set(actor.key,buffers);
       }
       const character=getCharacter(actor.character),pose=actor.pose;
@@ -244,13 +274,35 @@ export class StageRenderer {
       }
       const placement=actor.placement;
       const scale=placement?.scale??1.46;
-      const {x,baseline}=stageAnchor(pose,placement);
-      const transform:StageTransform={x,y:baseline-depthPoint(0,character.footY,depth).y*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0),horizontalScale:turn.horizontalScale,shear:turn.shear,depth};
+      const anchor=stageAnchor(pose,placement);
+      // Placement changes made outside a drag (switching side, the bank
+      // reflowing after an add or remove) are carried rather than jumped.
+      const mark:Mark|null=placement?{x:placement.x*1280,baseline:placement.baseline}:null;
+      let carried={dx:0,dy:0,lean:0};
+      if(mark) {
+        const moved=buffers.mark&&(buffers.mark.x!==mark.x||buffers.mark.baseline!==mark.baseline);
+        if(moved&&dragging!==actor.key&&!this.reduceMotion) {
+          const from=buffers.carryFrom?carry(buffers.carryFrom,buffers.mark!,now-buffers.carryAt):null;
+          buffers.carryFrom=from&&!from.done?{x:from.x,baseline:from.baseline}:{...buffers.mark!};
+          buffers.carryAt=now;this.animateUntil(now+MOVE_MS);
+        } else if(moved) buffers.carryFrom=null;
+        buffers.mark=mark;
+        if(buffers.carryFrom) {
+          const step=carry(buffers.carryFrom,mark,now-buffers.carryAt);
+          if(step.done)buffers.carryFrom=null;
+          else carried={dx:step.x-mark.x,dy:step.baseline-mark.baseline,lean:step.lean};
+        }
+      }
+      const entering=enterFade(now-buffers.bornAt);
+      const x=anchor.x+carried.dx,baseline=anchor.baseline+carried.dy+entering.dy;
+      const transform:StageTransform={x,y:baseline-depthPoint(0,character.footY,depth).y*scale,scale,facing:pose.facing,angle:pose.tilt+(placement?.lean??0)+carried.lean,horizontalScale:turn.horizontalScale,shear:turn.shear,depth};
       const draw=(buffer:HTMLCanvasElement,def:CharacterDefinition,alpha:number)=>{
         const visibleWidth=Math.abs(turn.horizontalScale)<.006?(turn.horizontalScale<0?-.006:.006):turn.horizontalScale;
         const defDepth={start:def.head.anchor[1]+20,end:def.footY};
-        scene.save();scene.globalAlpha=alpha;scene.translate(x,baseline-depthPoint(0,def.footY,defDepth).y*scale);
-        scene.rotate(transform.angle);scene.transform(visibleWidth*scale,0,turn.shear*scale,scale,0,0);scene.drawImage(buffer,-350,-400);scene.restore();
+        scene.save();scene.globalAlpha=alpha*entering.alpha;scene.translate(x,baseline-depthPoint(0,def.footY,defDepth).y*scale);
+        scene.rotate(transform.angle);scene.transform(visibleWidth*scale,0,turn.shear*scale,scale,0,0);
+        if(def===character){const m=scene.getTransform();buffers!.shown=[m.a,m.b,m.c,m.d,m.e,m.f];}
+        scene.drawImage(buffer,-350,-400);scene.restore();
       };
       const blend=Math.min(1,(now-buffers.changedAt)/240),eased=blend*blend*(3-2*blend);
       if(buffers.previousCharacter&&blend<1)draw(buffers.previous,buffers.previousCharacter,1-eased);
@@ -277,7 +329,10 @@ export class StageRenderer {
       c.fillStyle="#fff0cf";c.fillText(`${actor.control==="Left"?"L":"R"} · ${getCharacter(actor.character).name}`,x,699);c.restore();
     }
     if(now>=this.transitionUntil)this.transitionUntil=0;
+    this.hasDrawn=true;
   }
+  /** Keep redrawing every frame until a stage animation has finished. */
+  private animateUntil(until:number) { this.transitionUntil=Math.max(this.transitionUntil,until); }
   private drawBackdrop(p:Palette) {
     const c=this.background.getContext("2d")!;
     const light=c.createRadialGradient(630,255,10,640,310,790);
