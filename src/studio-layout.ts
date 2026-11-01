@@ -8,7 +8,6 @@ export function renderWorkspace(settings: Settings) {
       <div class="stage-shell" id="stage-shell">
         <canvas id="stage" tabindex="0" aria-label="เวทีหนังตะลุง" aria-description="ลากตัวละครเพื่อจัดตำแหน่งและย้ายฝั่ง ซ้ายใช้มือซ้าย ขวาใช้มือขวา คลิกหรือลูกศรเพื่อเลือกตัว และกด Escape เพื่อยกเลิกการลาก"></canvas>
         <aside id="stage-camera" class="stage-camera" aria-label="ภาพกล้องขณะเชิด" hidden><div class="camera-preview" id="camera-preview"><video id="camera-video" autoplay muted playsinline></video><canvas id="hand-overlay" width="640" height="480"></canvas><div class="camera-empty" id="camera-empty">${icon("camera")}<strong id="camera-empty-title">กล้องยังไม่เปิด</strong><span id="camera-empty-copy">หันฝ่ามือเข้ากล้อง ให้เห็นนิ้วครบ</span></div><span class="camera-label" id="camera-label">กล้อง</span><button id="toggle-overlay" class="overlay-toggle" aria-label="ซ่อนจุดมือ" title="แสดง / ซ่อนจุดมือ" hidden>จุดมือ</button></div></aside>
-        <div class="stage-hint">${icon("pointer")} ลากเพื่อจัดตำแหน่ง · คลิกเพื่อเลือกเชิด</div>
         <div class="stage-paused" id="stage-paused" hidden><span>${icon("pause")} พักการเชิด</span></div>
         <button class="exit-stage" id="exit-stage">${icon("close")} ออกจากเวที</button>
       </div>

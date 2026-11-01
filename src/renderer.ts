@@ -8,7 +8,6 @@ import {
   characterScene,
   getCharacter,
   type SceneNode,
-  type Graphic,
   type CharacterDefinition,
   type CharacterId,
 } from "./characters";
@@ -66,23 +65,7 @@ function circle(c: CanvasRenderingContext2D, x: number, y: number, r: number) {
   c.arc(x, y, r, 0, Math.PI * 2);
   c.fill();
 }
-function drawText(c: CanvasRenderingContext2D, text: NonNullable<Graphic["text"]>, facing: number) {
-  // The stage mirrors the whole buffer for left-facing puppets; pre-mirror the
-  // lettering so it still reads left to right on stage.
-  const m=c.getTransform();
-  c.save();
-  if((m.a*m.d-m.b*m.c)*facing<0)c.scale(-1,1);
-  c.font=`700 ${text.size}px Thonburi,"Noto Sans Thai",Tahoma,sans-serif`;
-  c.textAlign="center";c.textBaseline="middle";c.lineJoin="round";
-  const top=-(text.lines.length-1)*text.size*.6;
-  text.lines.forEach((line,i)=>{
-    const y=top+i*text.size*1.2;
-    if(text.stroke){c.strokeStyle=text.stroke;c.lineWidth=(text.strokeWidth??1)*2;c.strokeText(line,0,y);}
-    c.fillStyle=text.fill;c.fillText(line,0,y);
-  });
-  c.restore();
-}
-function drawScene(c: CanvasRenderingContext2D, nodes: SceneNode[], facing = 1) {
+function drawScene(c: CanvasRenderingContext2D, nodes: SceneNode[]) {
   for (const node of nodes) {
     c.save();
     c.translate(node.x ?? 0, node.y ?? 0);
@@ -90,8 +73,7 @@ function drawScene(c: CanvasRenderingContext2D, nodes: SceneNode[], facing = 1) 
     c.rotate(node.rotation ?? 0);
     if (node.graphic) {
       const g = node.graphic;
-      if(g.text) drawText(c, g.text, facing);
-      else if(g.image) {
+      if(g.image) {
         const image=imageAsset(g.image.src);
         if(image.complete&&image.naturalWidth>0) {
           c.save();c.clip(cachedPath(g.path+(g.holes??"")),"evenodd");
@@ -128,7 +110,7 @@ function drawScene(c: CanvasRenderingContext2D, nodes: SceneNode[], facing = 1) 
       }
       }
     }
-    if (node.children) drawScene(c, node.children, facing);
+    if (node.children) drawScene(c, node.children);
     c.restore();
   }
 }
@@ -164,7 +146,7 @@ export function paintCharacter(
     c.stroke();
     c.restore();
   }
-  drawScene(c, characterScene(character, pose, accessories), pose.facing);
+  drawScene(c, characterScene(character, pose, accessories));
   c.restore();
 }
 
@@ -251,7 +233,7 @@ export class StageRenderer {
         if(buffers.active)this.transitionUntil=now+240;
         buffers.active=character.id;buffers.changedAt=now;
       }
-      const signature=JSON.stringify([artworkRevision,actor.character,pose.mouth,pose.head,pose.rightArm,pose.leftArm,pose.facing,settings.theme,settings.rods,settings.accessories]);
+      const signature=JSON.stringify([artworkRevision,actor.character,pose.mouth,pose.head,pose.rightArm,pose.leftArm,settings.theme,settings.rods,settings.accessories]);
       if(signature!==buffers.signature) {
         for(const [buffer,rods] of [[this.rawPuppet,settings.rods],[buffers.mask,false]] as const) {
           const pc=buffer.getContext("2d")!;pc.clearRect(0,0,700,800);pc.save();pc.translate(350,400);

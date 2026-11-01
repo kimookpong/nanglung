@@ -201,8 +201,7 @@ describe("character library", () => {
     expect(flatten(forearm.children!).some(n => n.name === "watch-bezel")).toBe(true);
     const anutin = characterScene(CHARACTERS.find(c => c.id === "anutin")!, REST_RIG).map(n => n.name);
     expect(anutin.indexOf("tail")).toBeLessThan(anutin.indexOf("body"));
-    const lettering = scene("thaksin").find(n => n.name === "shirt-lettering")!;
-    expect(lettering.graphic?.text?.lines.join("")).toBe("เสื้อนี้สีแดง");
-    expect(characterSvg(CHARACTERS.find(c => c.id === "thaksin")!)).toContain("<tspan");
+    // ลุงแม้ว's red suit is baked into his sprites; no lettering overlay remains.
+    expect(scene("thaksin").some(n => n.name === "shirt-lettering")).toBe(false);
   });
 });

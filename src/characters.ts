@@ -21,8 +21,6 @@ export interface Graphic {
   strokeWidth?: number;
   image?: { src:string; width:number; height:number; matrix:readonly [number,number,number,number,number,number] };
   exclude?: string[];
-  /** Lettering centred on the node; renderers keep it readable when the puppet faces left. */
-  text?: { lines: string[]; size: number; fill: string; stroke?: string; strokeWidth?: number };
 }
 export interface SceneNode {
   name: string;
@@ -129,8 +127,8 @@ export const CHARACTERS: readonly CharacterDefinition[] = [
     name: "ลุงแม้ว",
     fullName: "ลุงแม้ว · ทักษิณ ชินวัตร · ตัวละครล้อเลียน",
     numeral: "๐๓",
-    subtitle: "สูทดำปัก “เสื้อนี้สีแดง” · ผ้าลายแดงทอง",
-    traits: "ลุงแม้ว ตัวละครล้อเลียนทักษิณ ชินวัตร ใช้ภาพใหม่ของผู้ใช้: ผมปัด ยิ้ม สูทดำที่ปักข้อความ “เสื้อนี้สีแดง” เนกไทแดง เข็มธงไทย ผ้านุ่งลายแดงทองเขียว และรองเท้าปลายงอน คงรายละเอียดจากภาพจริง",
+    subtitle: "สูทสีแดง · ผ้าลายแดงทอง · มือชี้",
+    traits: "ลุงแม้ว ตัวละครล้อเลียนทักษิณ ชินวัตร ใช้ภาพใหม่ของผู้ใช้: ผมปัด ยิ้ม สูทสีแดง เนกไทแดง เข็มธงไทย ผ้านุ่งลายแดงทองเขียว และรองเท้าปลายงอน คงรายละเอียดจากภาพจริง",
     gesture: "ยกฝ่ามือรับบทสนทนา ยิ้มตอบ และผายมือประกอบคำ",
     source: "https://github.com/kimookpong/nanglung/blob/main/docs/USER_CHARACTER_ART.md",
     sourceLabel: "แบบล่าสุดจากภาพผู้ใช้ ↗",
@@ -373,10 +371,7 @@ export function sceneSvg(
     if (node.graphic) {
       const g = node.graphic;
       const paint = `${g.fill ? ` fill="${g.fill}"` : ""}${g.stroke ? ` stroke="${g.stroke}" stroke-width="${g.strokeWidth ?? 1}" stroke-linecap="round" stroke-linejoin="round"` : ""}`;
-      if(g.text) {
-        const t=g.text,top=-(t.lines.length-1)*t.size*.6;
-        graphic=`<text text-anchor="middle" dominant-baseline="central" font-family="Thonburi,Noto Sans Thai,Tahoma,sans-serif" font-weight="700" font-size="${t.size}" fill="${t.fill}"${t.stroke?` stroke="${t.stroke}" stroke-width="${t.strokeWidth??1}" paint-order="stroke" stroke-linejoin="round"`:""}>${t.lines.map((line,i)=>`<tspan x="0" y="${top+i*t.size*1.2}">${line}</tspan>`).join("")}</text>`;
-      } else if(g.image) {
+      if(g.image) {
         const imageId=`${prefix}-image-${g.image.src.split("/").pop()!.replace(/\W/g,"-")}`;
         if(!images.has(imageId))images.set(imageId,g.image);
         const mask=g.exclude?.length?`<mask id="${id}-mask" maskUnits="userSpaceOnUse" x="-1000" y="-1000" width="2000" height="2000"><path d="${g.path}" fill="white"/>${g.exclude.map(path=>`<path d="${path}" fill="black" fill-rule="evenodd"/>`).join("")}</mask>`:"";

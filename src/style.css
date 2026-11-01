@@ -234,25 +234,6 @@ input[type="range"]:disabled {
   outline: 2px solid var(--gold);
   outline-offset: -3px;
 }
-.stage-hint {
-  position: absolute;
-  bottom: 13px;
-  left: 14px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 9px;
-  border: 1px solid #e2c38f20;
-  border-radius: 6px;
-  background: #211a13bb;
-  color: #cbb697;
-  font-size: 9px;
-  pointer-events: none;
-}
-.stage-hint svg {
-  width: 12px;
-  height: 12px;
-}
 .stage-toolbar {
   flex: none;
   display: flex;
@@ -374,10 +355,6 @@ input[type="range"]:disabled {
 .exit-stage svg {
   width: 16px;
   height: 16px;
-}
-.stage-shell:fullscreen .stage-hint,
-.stage-shell.presentation .stage-hint {
-  display: none;
 }
 /* Five channels are an optional tool surface; the stage remains the main task. */
 .finger-panel {
@@ -1853,11 +1830,6 @@ input[type="range"]:disabled {
   .finger-action {
     font-size: 8px;
   }
-  .stage-hint {
-    font-size: 8px;
-    bottom: 10px;
-    left: 10px;
-  }
 
   .library-dialog {
     padding: 18px;
@@ -1995,9 +1967,6 @@ input[type="range"]:disabled {
   .toolbar-divider {
     margin: 0 2px;
     height: 16px;
-  }
-  .stage-hint {
-    display: none;
   }
   .finger-panel {
     position: absolute;

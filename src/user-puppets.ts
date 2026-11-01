@@ -111,19 +111,12 @@ function ratTail():SceneNode[] {
     node("tail-rings",{path:path(rings),fill:"none",stroke:"#9c5f55",strokeWidth:.8}),
   ];
 }
-/** ลุงแม้ว: lettering across the black jacket — the joke is the colour. */
-function redShirtLettering():SceneNode[] {
-  const [x,y]=point(566,652);
-  return [node("shirt-lettering",{path:"",text:{lines:["เสื้อนี้สีแดง"],size:14,fill:"#e0262c",stroke:"#fff1d2",strokeWidth:1.2}},x,y)];
-}
-
 const source=(id:PuppetId)=>CUTS[id] as unknown as Source;
 function withGimmicks(id:PuppetId):Art {
   const s=source(id),art=puppet(s);
   if(id==="prayut")art.head.details=juntaCap(s);
   if(id==="prawit")art.arms.right.art!.lowerDetails=luxuryWatch(art.arms.right.lower);
   if(id==="anutin")art.underlay=ratTail();
-  if(id==="thaksin")art.decorations=redShirtLettering();
   return art;
 }
 export const USER_PUPPETS={prayut:withGimmicks("prayut"),thaksin:withGimmicks("thaksin"),prawit:withGimmicks("prawit"),anutin:withGimmicks("anutin"),thanathorn:withGimmicks("thanathorn")};

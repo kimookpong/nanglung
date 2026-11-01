@@ -22,6 +22,10 @@ W, H, SS = 1024, 1536, 4          # source size and stencil supersampling
 INK = (23, 19, 15)                 # leather outline colour
 MOUTH = (58, 20, 16)               # shown when the jaw opens
 OUTLINE = 7                        # px at source scale (~2 rig units)
+# Costume recolours: dark, unsaturated cloth above `above` (plus the sleeves)
+# is remapped to a red ramp that keeps the fabric shading and seam lines.
+RECOLOUR = {"thaksin": {"above": 745, "shadow": (92, 12, 16), "base": (176, 28, 34),
+                        "light": (226, 72, 70), "line": (38, 8, 9)}}
 
 
 def parse(path):
@@ -155,8 +159,23 @@ def save(name, rgb, alpha, outline=True):
     return {"x": int(x0), "y": int(y0), "w": int(x1 - x0), "h": int(y1 - y0)}
 
 
+def recolour(rgb, alpha, area, spec):
+    lum, sat = rgb.mean(axis=2), rgb.max(axis=2) - rgb.min(axis=2)
+    cloth = area & (lum < 70) & (sat < 28) & (alpha > .1)
+    t = np.clip((lum - 2) / 34, 0, 1)[..., None]
+    shadow, base, light = (np.array(spec[k], np.float32) for k in ("shadow", "base", "light"))
+    red = np.where(t < .5, shadow + (base - shadow) * (t / .5), base + (light - base) * ((t - .5) / .5))
+    red = np.where((lum < 2.5)[..., None], np.array(spec["line"], np.float32), red)
+    return np.where(cloth[..., None], red, rgb)
+
+
 def cut_puppet(cut):
     rgb, alpha = load(cut)
+    if cut["id"] in RECOLOUR:
+        spec = RECOLOUR[cut["id"]]
+        sleeves = sum(stencil(cut[side][part]) for side in ("point", "palm") for part in ("upper", "lower"))
+        area = ((np.arange(H)[:, None] < spec["above"]) | (sleeves > .5)) & (stencil(cut["head"]) < .5)
+        rgb = recolour(rgb, alpha, area, spec)
     pid, boxes = cut["id"], {}
     head, jaw, body = stencil(cut["head"]), stencil(cut["jaw"]), stencil(cut["body"])
     arms = {side: {part: stencil(cut[side][part]) for part in ("upper", "lower", "hand")} for side in ("point", "palm")}
